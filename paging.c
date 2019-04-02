@@ -202,6 +202,26 @@ void initialize_memory ()
   }
   // initilize the remaining pages, also put them in free list
   // *** ADD CODE
+  for(i = OSpages; i<numFrames; i++){
+    memFrame[i].age = zeroAge;
+    memFrame[i].dirty = cleanFrame;
+    memFrame[i].free = freeFrame;
+    memFrame[i].pinned = nopinFrame;
+  }
+
+  //Create the next free frame for all but the last frame
+  for(i = OSpages; i<numFrames-1; i++){
+    memFrame[i].next = i+1;
+  }
+
+  //Create the prev free frame for all but the first free frame
+  for(i = numFrames - 1; i > OSpages; i--){
+    memFrame[i].prev = i-1;
+  }
+
+  //First free frame is at OSpages, last is at numFrames-1
+  freeFhead = OSpages;
+  freeFtail = numFrames - 1;
 
 }
 
