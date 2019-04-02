@@ -34,7 +34,7 @@ int periodAgeScan; // the period for scanning and shifting the age vectors
 int termPrintTime;   // simulated time (sleep) for terminal to output a string
 int diskRWtime;   // simulated time (sleep) for disk IO (a page)
 
-//=============== memory.c related definitions ====================
+//=============== memory.c (NOW paging.c) related definitions ====================
 
 // memory data type defintion, could be int or float
 //typedef int mdType; 
@@ -63,14 +63,24 @@ int get_instruction (int offset);
 // basic memory functions
 void initialize_memory_manager ();  // called by system.c
 void dump_process_memory (int pid);
+void dump_process_pagetable (int pid);
+void dump_memoryframe_info ();
 void dump_memory ();
 
 // memory management functions
 
 int allocate_memory (int pid, int msize, int numinstr);
 int free_memory (int pid);  // only called by process.c 
-
+int free_process_memory (int pid);
 void memory_agescan ();  // called by cpu.c after age scan interrupt
+
+// additional functions used by other .c files
+// by loader.c
+void init_process_pagetable (int pid);
+void update_process_pagetable (int pid, int page, int frame);
+void update_frame_info (int findex, int pid, int page);
+void direct_put_instruction (int findex, int offset, int instr);
+void direct_put_data (int findex, int offset, mdType data);
 
 
 //================= cpu.c related definitions ======================
@@ -113,7 +123,7 @@ struct
 
 void initialize_cpu ();  // called by system.c
 void cpu_execution ();   // called by process.c
-
+void dump_registers ();
 void set_interrupt (unsigned bit);  
      // called by clock.c for tqInterrup, memory.c  for ageInterrupt
      // called by clock.c for endWaitInterrupt (sleep)
@@ -144,10 +154,13 @@ typePCB **PCB;
 #define osPid 0
 #define idlePid 1
 
+void initialize_process_manager ();
 
 // define process manipulation functions
 
 void dump_PCB (int pid); 
+void dump_PCB_list ();
+void dump_PCB_memory ();
 void dump_ready_queue ();
 
 void insert_endWait_process (int pid); 
@@ -226,6 +239,8 @@ void start_client_submission ();
 void end_client_submission ();
 void one_submission ();
 int load_process (int pid, char *fname);
+void load_idle_process ();
+void start_swap_manager ();
 
 // return status of loader, whether the program being loaded is correct
 #define progError -1

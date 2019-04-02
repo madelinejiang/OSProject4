@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <semaphore.h>
@@ -58,7 +59,7 @@ void dump_process_swap (int pid)
 }
 
 // open the file with the swap space size, initialize content to 0
-initialize_swap_space ()
+void initialize_swap_space ()
 { int ret, i, j, k;
   int buf[pageSize];
 
