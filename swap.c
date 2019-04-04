@@ -44,10 +44,10 @@ int read_swap_page (int pid, int page, unsigned *buf)
   { printf ("Error: Incorrect pid for disk read: %d\n", pid); 
     return (-1);
   }
-  location = (pid-2) * PswapSize + page*pagedataSize;
-  ret = lseek (diskfd, location, SEEK_SET);
+  int location = (pid-2) * PswapSize + page*pagedataSize;
+  int ret = lseek (diskfd, location, SEEK_SET);
   if (ret < 0) perror ("Error lseek in read: \n");
-  retsize = read (diskfd, (char *)buf, pagedataSize);
+  int retsize = read (diskfd, (char *)buf, pagedataSize);
   if (retsize != pagedataSize) 
   { printf ("Error: Disk read returned incorrect size: %d\n", retsize); 
     exit(-1);
@@ -66,10 +66,10 @@ int write_swap_page (int pid, int page, unsigned *buf)
   { printf ("Error: Incorrect pid for disk write: %d\n", pid); 
     return (-1);
   }
-  location = (pid-2) * PswapSize + page*pagedataSize;
-  ret = lseek (diskfd, location, SEEK_SET);
+  int location = (pid-2) * PswapSize + page*pagedataSize;
+  int ret = lseek (diskfd, location, SEEK_SET);
   if (ret < 0) perror ("Error lseek in write: \n");
-  retsize = write (diskfd, (char *)buf, pagedataSize);
+  int retsize = write (diskfd, (char *)buf, pagedataSize);
   if (retsize != pagedataSize) 
     { printf ("Error: Disk read returned incorrect size: %d\n", retsize); 
       exit(-1);
@@ -88,16 +88,18 @@ int dump_process_swap_page (int pid, int page)
   { printf ("Error: Incorrect pid for disk dump: %d\n", pid); 
     return (-1);
   }
-  location = (pid-2) * PswapSize + page*pagedataSize;
-  ret = lseek (diskfd, location, SEEK_SET);
+  int location = (pid-2) * PswapSize + page*pagedataSize;
+  int ret = lseek (diskfd, location, SEEK_SET);
   //printf ("loc %d %d %d, size %d\n", pid, page, location, pagedataSize);
   if (ret < 0) perror ("Error lseek in dump: \n");
-  retsize = read (diskfd, (char *)buf, pagedataSize);
+  char *buf = (char *) malloc(pagedataSize);
+  int retsize = read (diskfd, buf, pagedataSize);
   if (retsize != pagedataSize) 
   { printf ("Error: Disk dump read incorrect size: %d\n", retsize); 
     exit(-1);
   }
   printf ("Content of process %d page %d:\n", pid, page);
+  int k;
   for (k=0; k<pageSize; k++) printf ("%d ", buf[k]);
   printf ("\n");
 
@@ -176,7 +178,7 @@ void dump_swapQ ()
     printf("********************* Dumping Swap Q\n");
     SwapQnode *node = swapQhead;
     while(node != NULL){
-      print_one_swapnode(&node);
+      print_one_swapnode(node);
     }
   }
 }
@@ -208,7 +210,7 @@ void *process_swapQ ()
   sem_wait(&swapq_mutex);
     //<critical section>
     //dequeue
-    SwapQnode node = swapQhead;
+    SwapQnode *node = swapQhead;
     swapQhead = node->next;
 
     //prepare for the disk action
@@ -235,7 +237,7 @@ void start_swap_manager ()
   initialize_swap_space ();
 
   // create swap thread
-  ret = pthread_create(&termThread, NULL, termIO, NULL);
+  int ret = pthread_create(&swapQThread, NULL, process_swapQ, NULL);
   if(ret < 0){
     printf("Swap.c thread creation problem.\n");
     exit(1);

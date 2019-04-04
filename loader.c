@@ -91,7 +91,7 @@ int load_process_to_swap (int pid, char *fname)
         break;
       }
     }
-    insert_swapQ(pid, i, page, actWrite, freeBuf);
+    insert_swapQ(pid, i, (unsigned *) page, actWrite, freeBuf);
     PCB[pid]->PTptr[i] = diskPage;
   }
 }
@@ -106,7 +106,7 @@ int load_pages_to_memory (int pid, int numpages)
   int k;
   for(k = 0; k < numpages; k++){
     unsigned *buf = malloc(pageSize * dataSize);
-    insert_swapQ(pid, k, &buf, actRead, toReady);
+    insert_swapQ(pid, k, buf, actRead, toReady);
     //update PCB
   }
 
