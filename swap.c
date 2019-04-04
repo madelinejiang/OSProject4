@@ -53,6 +53,9 @@ int read_swap_page (int pid, int page, unsigned *buf)
     exit(-1);
   }
   usleep (diskRWtime);
+
+  //we should return something better than just 0
+  return 0;
 }
 
 int write_swap_page (int pid, int page, unsigned *buf)
@@ -72,6 +75,9 @@ int write_swap_page (int pid, int page, unsigned *buf)
       exit(-1);
     }
   usleep (diskRWtime);
+
+  //we should return something better than just 0
+  return 0;
 }
 
 int dump_process_swap_page (int pid, int page)
@@ -94,6 +100,9 @@ int dump_process_swap_page (int pid, int page)
   printf ("Content of process %d page %d:\n", pid, page);
   for (k=0; k<pageSize; k++) printf ("%d ", buf[k]);
   printf ("\n");
+
+  //we should return something better than just 0
+  return 0;
 }
 
 void dump_process_swap (int pid)
@@ -179,32 +188,16 @@ void insert_swapQ (pid, page, buf, act, finishact)
 int pid, page, act, finishact;
 unsigned *buf;
 { 
-  //so basically, a lovely switch case
-  //First the action
-  switch(act){
-    case actRead:
-      break;
-    case actWrite:
-      break;
-    default:
-      printf("ERROR @insert_swapQ(): Invalid action: %d\n", act);
-      break;
-  }
+  SwapQnode *node = (SwapQnode *) malloc(sizeof(SwapQnode));
 
-  //Then the finish action
-  switch(finishact){
-    case toReady:
-    case freeBuf:
-    case Both:
-      printf("Why are you doing both? Please don't\n");
-      break;
-    case Nothing:
-      printf("SwapQ for pid %d page %d doing nothing else\n", pid, page);
-      break;
-    default:
-      printf("ERROR @ insert_swapQ(): Invalid finish action: %d", finishact)
-      break;
-  }
+  node->pid = pid;
+  node->page = page;
+  node->act = act;
+  node->finishact = finishact;
+  node->buf = buf;
+
+  swapQtail->next = node;
+  sem_post(&swap_semaq);
 }
 
 void *process_swapQ ()
@@ -212,9 +205,22 @@ void *process_swapQ ()
   // called as the entry function for the swap thread
   //wait for something in the queue before proceeding
   sem_wait(&swap_semaq);
-  //<critical section>
-  sem_wait(&)
+  sem_wait(&swapq_mutex);
+    //<critical section>
+    //dequeue
+    SwapQnode node = swapQhead;
+    swapQhead = node->next;
 
+    //prepare for the disk action
+    switch(node->act){
+      case actRead:
+        break;
+      case actWrite:
+        break;
+      default:
+        break;
+    }
+  sem_post(&swapq_mutex);
 
 
 }
@@ -229,7 +235,7 @@ void start_swap_manager ()
   initialize_swap_space ();
 
   // create swap thread
-  ret = pthread_creat(&termThread, NULL, termIO, NULL);
+  ret = pthread_create(&termThread, NULL, termIO, NULL);
   if(ret < 0){
     printf("Swap.c thread creation problem.\n");
     exit(1);

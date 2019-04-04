@@ -92,8 +92,8 @@ int load_process_to_swap (int pid, char *fname)
       }
     }
     insert_swapQ(pid, i, page, actWrite, freeBuf);
+    PCB[pid]->PTptr[i] = diskPage;
   }
-  //the loading fo instructions will be moved here in phase 2, but in phase 1, in load to mem
 }
 
 int load_pages_to_memory (int pid, int numpages)
@@ -103,16 +103,19 @@ int load_pages_to_memory (int pid, int numpages)
   // ask swap.c to place the process to ready queue only after the last load
   // do not forget to update the page table of the process
   // this function has some similarity with page fault handler
-  
-  
+  int k;
+  for(k = 0; k < numpages; k++){
+    unsigned *buf = malloc(pageSize * dataSize);
+    insert_swapQ(pid, k, &buf, actRead, toReady);
+    //update PCB
+  }
 
   
   return 0;
-  }
+}
 
 int load_process (int pid, char *fname)
 { int ret;
-  init_process_pagetable(pid);
   ret = load_process_to_swap (pid, fname);   // return #pages loaded
 
   if (ret != progError) load_pages_to_memory (pid, ret);

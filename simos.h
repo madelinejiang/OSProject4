@@ -184,7 +184,7 @@ void execute_process ();  // called by admin.c
 // the following flags are used in swap.c, loader.c, paging.c
 #define Nothing 1   // flag values for finishact field (what to do after swap)
 #define freeBuf 2   // 1: do nothing, 2: swap.c should free the input buffer
-#define toReady 4   // 4: swap.c should sesnd the process to ready queue
+#define toReady 4   // 4: swap.c should send the process to ready queue
 #define Both    6   // 6: both 2 and 4 (not used)
 #define actRead 0   // flags for act (action), read or write, with(out) signal
 #define actWrite 1

@@ -172,6 +172,7 @@ int new_PCB ()
   }
   PCB[pid] = (typePCB *) malloc ( sizeof(typePCB) );
   PCB[pid]->Pid = pid;
+  init_process_pagetable(pid);
   return (pid);
 }
 
