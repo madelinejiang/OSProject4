@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "simos.h"
 
 // Memory definitions, including the memory itself and a page structure
@@ -114,9 +115,15 @@ void direct_put_data (int findex, int offset, mdType data)
 // Memory and memory frame management
 //==========================================
 
-void dump_one_frame (int findex)
-{ 
-  // dump the content of one memory frame
+// dump the content of one memory frame
+void dump_one_frame (int findex) { 
+  int i;
+  printf("************ Dump contents of frame %d\n", findex);
+  
+  for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
+    printf("Memory @ - 0x%032x| Data - 0x%016x", i, Memory[i]);
+  }
+
 }
 
 void dump_memory ()
@@ -126,11 +133,17 @@ void dump_memory ()
   for (i=0; i<numFrames; i++) dump_one_frame (i);
 }
 
-// above: dump memory content, below: only dump frame infor
+// above: dump memory content, below: only dump frame inforation
 
+// dump the list of free memory frames
 void dump_free_list ()
-{ 
-  // dump the list of free memory frames
+{ int i = freeFhead;
+
+  printf ("******************** Free Frame List\n");
+  //Since frame 0 is always going to be OS, can treat as a null index
+  while(i > 0){
+    printf ("Free Frame %d: ", i);
+  }
 }
 
 void print_one_frameinfo (int indx)
@@ -175,11 +188,31 @@ int select_agest_frame ()
   // that is not dirty
 }
 
-int get_free_frame ()
-{ 
 // get a free frame from the head of the free list 
 // if there is no free frame, then get one frame with the lowest age
 // this func always returns a frame, either from free list or get one with lowest age
+int get_free_frame (){ 
+  int freeFrameIndex;
+  //if the there is a head, then there are free pages
+  if(freeFhead > 0){
+    freeFrameIndex = freeFhead;
+    int next = memFrame[freeFhead].next;
+    //if there is no next frame, then tail and head must be set to 0
+    if(next > 0){
+      memFrame[next].prev = 0;
+      freeFhead = next;
+    } else {
+      freeFhead = 0;
+      freeFtail = 0;
+    }
+    memFrame[freeFhead].next = 0;
+    return freeFrameIndex;
+  } else {
+    //we are assuming that a free frame will go immediately to work
+    //so dequeue the frame from list
+    //add age stuff later
+  return -1;
+  }
 } 
 
 void initialize_memory ()
@@ -191,6 +224,8 @@ void initialize_memory ()
 
   // compute #bits for page offset, set pagenumShift and pageoffsetMask
   // *** ADD CODE
+  pagenumShift = (int)round(log2(pageSize)); // I'm rounding just in case I have some imprecision
+  pageoffsetMask = ~(-1 << pagenumShift);
 
   // initialize OS pages
   for (i=0; i<OSpages; i++)

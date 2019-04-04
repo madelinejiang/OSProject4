@@ -23,12 +23,15 @@ int idleQuantum;   // time quantum for the idle process
 //memory
 #define dataSize 4   // each memory unit is of size 4 bytes
 #define addrSize 4   // each memory address is of size 4 bytes
+// sizes related to memory and memory management
 int pageSize, numFrames;
-       // sizes related to memory and memory management
-int loadPpages, maxPpages, OSpages;
-       // loadPpages: at load time, #pages allocated to each process
-       // maxPpages: max #pages for each process
-       // OSpages = #pages for OS, OS occupies the begining of the memory
+// loadPpages: at load time, #pages allocated to each process
+int loadPpages;
+// maxPpages: max #pages for each process
+int maxPpages;
+// OSpages = #pages for OS, OS occupies the begining of the memory
+int OSpages;
+       
 int periodAgeScan; // the period for scanning and shifting the age vectors
                    // defined in # instruction-cycles
 int termPrintTime;   // simulated time (sleep) for terminal to output a string
@@ -81,6 +84,7 @@ void update_process_pagetable (int pid, int page, int frame);
 void update_frame_info (int findex, int pid, int page);
 void direct_put_instruction (int findex, int offset, int instr);
 void direct_put_data (int findex, int offset, mdType data);
+int get_free_frame ();
 
 
 //================= cpu.c related definitions ======================

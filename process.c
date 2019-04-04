@@ -14,11 +14,23 @@ int numUserProcess = 0;
 void context_in (int pid)
 { 
   // *** ADD CODE to switch in the context from PCB to CPU
+  CPU.Pid = pid;
+  CPU.PC = PCB[pid]->PC;
+  CPU.AC = PCB[pid]->AC;
+  CPU.Mbase = PCB[pid]->Mbase;
+  CPU.MDbase = PCB[pid]->MDbase;
+  CPU.Mbound = PCB[pid]->Mbound;
+  CPU.PTptr = PCB[pid]->PTptr;
+  CPU.exeStatus = PCB[pid]->exeStatus;
 }
 
 void context_out (int pid, int intime)
 {  
   // *** ADD CODE to switch out the context from CPU to PCB
+  PCB[pid]->PC = CPU.PC;
+  PCB[pid]->AC = CPU.AC;
+  PCB[pid]->PTptr = CPU.PTptr;
+  PCB[pid]->exeStatus = CPU.exeStatus;
 }
 
 //=========================================================================

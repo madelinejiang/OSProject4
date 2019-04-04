@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <semaphore.h>
+#include <pthread.h>
 #include "simos.h"
 
 
@@ -24,6 +25,8 @@ sem_t swap_semaq;
 sem_t swapq_mutex;
 sem_t disk_mutex;
 
+pthread_t swapQThread;
+
 //===================================================
 // This is the simulated disk, including disk read, write, dump.
 // The unit is a page
@@ -37,18 +40,60 @@ int read_swap_page (int pid, int page, unsigned *buf)
 { 
   // reference the previous code for this part
   // but previous code was not fully completed
+  if (pid < 2 || pid > maxProcess) 
+  { printf ("Error: Incorrect pid for disk read: %d\n", pid); 
+    return (-1);
+  }
+  location = (pid-2) * PswapSize + page*pagedataSize;
+  ret = lseek (diskfd, location, SEEK_SET);
+  if (ret < 0) perror ("Error lseek in read: \n");
+  retsize = read (diskfd, (char *)buf, pagedataSize);
+  if (retsize != pagedataSize) 
+  { printf ("Error: Disk read returned incorrect size: %d\n", retsize); 
+    exit(-1);
+  }
+  usleep (diskRWtime);
 }
 
 int write_swap_page (int pid, int page, unsigned *buf)
 { 
   // reference the previous code for this part
   // but previous code was not fully completed
+  if (pid < 2 || pid > maxProcess) 
+  { printf ("Error: Incorrect pid for disk write: %d\n", pid); 
+    return (-1);
+  }
+  location = (pid-2) * PswapSize + page*pagedataSize;
+  ret = lseek (diskfd, location, SEEK_SET);
+  if (ret < 0) perror ("Error lseek in write: \n");
+  retsize = write (diskfd, (char *)buf, pagedataSize);
+  if (retsize != pagedataSize) 
+    { printf ("Error: Disk read returned incorrect size: %d\n", retsize); 
+      exit(-1);
+    }
+  usleep (diskRWtime);
 }
 
 int dump_process_swap_page (int pid, int page)
 { 
   // reference the previous code for this part
   // but previous code was not fully completed
+  if (pid < 2 || pid > maxProcess) 
+  { printf ("Error: Incorrect pid for disk dump: %d\n", pid); 
+    return (-1);
+  }
+  location = (pid-2) * PswapSize + page*pagedataSize;
+  ret = lseek (diskfd, location, SEEK_SET);
+  //printf ("loc %d %d %d, size %d\n", pid, page, location, pagedataSize);
+  if (ret < 0) perror ("Error lseek in dump: \n");
+  retsize = read (diskfd, (char *)buf, pagedataSize);
+  if (retsize != pagedataSize) 
+  { printf ("Error: Disk dump read incorrect size: %d\n", retsize); 
+    exit(-1);
+  }
+  printf ("Content of process %d page %d:\n", pid, page);
+  for (k=0; k<pageSize; k++) printf ("%d ", buf[k]);
+  printf ("\n");
 }
 
 void dump_process_swap (int pid)
@@ -116,6 +161,15 @@ void print_one_swapnode (SwapQnode *node)
 void dump_swapQ ()
 { 
   // dump all the nodes in the swapQ
+  if(swapQhead = NULL){
+    printf("*** Swap Q Empty ***\n");
+  } else {
+    printf("********************* Dumping Swap Q\n");
+    SwapQnode *node = swapQhead;
+    while(node != NULL){
+      print_one_swapnode(&node);
+    }
+  }
 }
 
 // act can be actRead or actWrite
@@ -125,23 +179,76 @@ void insert_swapQ (pid, page, buf, act, finishact)
 int pid, page, act, finishact;
 unsigned *buf;
 { 
+  //so basically, a lovely switch case
+  //First the action
+  switch(act){
+    case actRead:
+      break;
+    case actWrite:
+      break;
+    default:
+      printf("ERROR @insert_swapQ(): Invalid action: %d\n", act);
+      break;
+  }
+
+  //Then the finish action
+  switch(finishact){
+    case toReady:
+    case freeBuf:
+    case Both:
+      printf("Why are you doing both? Please don't\n");
+      break;
+    case Nothing:
+      printf("SwapQ for pid %d page %d doing nothing else\n", pid, page);
+      break;
+    default:
+      printf("ERROR @ insert_swapQ(): Invalid finish action: %d", finishact)
+      break;
+  }
 }
 
 void *process_swapQ ()
 {
   // called as the entry function for the swap thread
+  //wait for something in the queue before proceeding
+  sem_wait(&swap_semaq);
+  //<critical section>
+  sem_wait(&)
+
+
+
 }
 
 void start_swap_manager ()
 { 
   // initialize semaphores
-  // initialize_swap_space ();
+  sem_init(&swap_semaq, 0, 0);  //nothing in swapq
+  sem_init(&swapq_mutex, 0, 1); //swapq should be available at the start
+  sem_init(&disk_mutex, 0, 1);  //disk should be available at the start
+
+  initialize_swap_space ();
+
   // create swap thread
+  ret = pthread_creat(&termThread, NULL, termIO, NULL);
+  if(ret < 0){
+    printf("Swap.c thread creation problem.\n");
+    exit(1);
+  } else {
+    printf("SwapQ thread created successfully!\n");
+    process_swapQ();
+  }
+
 }
 
 void end_swap_manager ()
 { 
-  // terminate the swap thread 
+  // terminate the swap thread
+  sem_post(&swap_semaq);
+  sem_post(&swapq_mutex);
+  sem_post(&disk_mutex);
+
+  int ret = pthread_join(swapQThread, NULL);
+  printf("Swap Q thread has terminated. Return int: %d\n", ret);
 }
 
 
