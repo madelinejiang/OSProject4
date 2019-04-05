@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "simos.h"
+#include <math.h>
+#include <unistd.h>
 
 // need to be consistent with paging.c: mType and constant definitions
 #define opcodeShift 24
@@ -62,7 +64,7 @@ int load_process_to_swap (int pid, char *fname)
   int ret, i, j, opcode, operand;
   float data;
 
-  progFd = fopen(fname, "w");
+  progFd = fopen(fname, "r");
   if(progFd == NULL){
     printf("Submission Error: Program name not found, incorrect program name: %s!\n", fname);
     return progError;
@@ -73,27 +75,40 @@ int load_process_to_swap (int pid, char *fname)
     printf("Submission failure: Invalid file, missing %d program parameters!\n", 3-ret);
     return progError;
   }
+  else { //*for debugging
+	  printf("finished reading parameters\n");
+  }
 
   //Pages needed needs to check for msize - 1, because if msize is 32, it should still fit on 1 page
   //And I HIGHLY doubt we will get an msize of 0, but may add check later down the line
-  int pagesNeeded = (msize - 1) / pageSize + 1;
+
+  ////msize is the number of byte addresses we will need. pageSize=8 according to config. 
+  ////int pagesNeeded = (msize - 1) / pageSize + 1;
+  int pagesNeeded = ceil((float)msize / (float)pageSize);
+  int loadedPages = 0;//keep track of successfully loaded pages. in the future could have error checking with malloc
+  printf("msize is %d. pageSize is %d. Need %d pages\n", msize, pageSize, pagesNeeded);
   int line = 0;
+  printf("%d\n", pagesNeeded);
   for(i = 0; i < pagesNeeded; i++){
+	  printf("value of line is %d\n", line);//MJ
     mType *page = (mType *) malloc (pageSize*sizeof(mType));
-    for(j=0; j < pageSize; j++){
+    for(j=0; j < pageSize; j++){ //
       if(line < msize){
         if(line < numinstr){
           load_instruction(page, i, j);
-        } else {
-          load_data(page, i, j);
-        }
-      } else {
+        } else { load_data(page, i, j);}
+		line++;//MJ
+      }  else {
         break;
       }
     }
     insert_swapQ(pid, i, (unsigned *) page, actWrite, freeBuf);
+	printf("submitted a page\n");
+	loadedPages++;
     PCB[pid]->PTptr[i] = diskPage;
   }
+  fclose(progFd);
+  return loadedPages;
 }
 
 int load_pages_to_memory (int pid, int numpages)
@@ -106,7 +121,8 @@ int load_pages_to_memory (int pid, int numpages)
   int k;
   for(k = 0; k < numpages; k++){
     unsigned *buf = malloc(pageSize * dataSize);
-    insert_swapQ(pid, k, buf, actRead, toReady);
+    insert_swapQ(pid, k, buf, actRead, toReady); 
+
     //update PCB
   }
 
@@ -117,7 +133,7 @@ int load_pages_to_memory (int pid, int numpages)
 int load_process (int pid, char *fname)
 { int ret;
   ret = load_process_to_swap (pid, fname);   // return #pages loaded
-
+  //printf("pages loaded to swap %d\n", ret); for debugging
   if (ret != progError) load_pages_to_memory (pid, ret);
   return (ret);
 }

@@ -121,7 +121,7 @@ void dump_one_frame (int findex) {
   printf("************ Dump contents of frame %d\n", findex);
   
   for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
-    printf("Memory @ - 0x%032x| Data - 0x%016x", i, Memory[i]);
+    printf("Memory @ - 0x%032x| Data - 0x%016x\n", i, Memory[i]);
   }
 
 }
@@ -141,7 +141,7 @@ void dump_free_list ()
 
   printf ("******************** Free Frame List\n");
   //Since frame 0 is always going to be OS, can treat as a null index
-  while(i > 0){
+  while(i > 0){ //currently gives an endless loop MJ
     printf ("Free Frame %d: ", i);
   }
 }

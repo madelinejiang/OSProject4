@@ -172,13 +172,14 @@ void print_one_swapnode (SwapQnode *node)
 void dump_swapQ ()
 { 
   // dump all the nodes in the swapQ
-  if(swapQhead = NULL){
+  if(swapQhead ==NULL){ 
     printf("*** Swap Q Empty ***\n");
   } else {
     printf("********************* Dumping Swap Q\n");
     SwapQnode *node = swapQhead;
     while(node != NULL){
       print_one_swapnode(node);
+	  node = node->next;
     }
   }
 }
@@ -197,9 +198,19 @@ unsigned *buf;
   node->act = act;
   node->finishact = finishact;
   node->buf = buf;
-
-  swapQtail->next = node;
+  ////MJ
+  if (swapQhead == NULL) { //empty swapQ so make it the head
+	  swapQhead = node;
+	  swapQhead->next = NULL;
+  }
+  else {// not an empty swapQ, add to the tail
+	  swapQtail->next = node;
+  }
+  swapQtail = node;  //new node is the tail
+  swapQtail->next = NULL;
   sem_post(&swap_semaq);
+
+  printf("finished inserting one item into swapQ\n");
 }
 
 void *process_swapQ ()

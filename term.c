@@ -145,7 +145,7 @@ void start_terminal ()
 
 void end_terminal ()
 { int ret;
-
+sem_post(&term_semaq);
   fclose (fterm);
   ret = pthread_join (termThread, NULL);
   printf ("TermIO thread has terminated %d\n", ret);

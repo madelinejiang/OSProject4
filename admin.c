@@ -36,7 +36,9 @@ void process_admin_command ()
       case 'm':   // dump memory of each process
         dump_PCB_memory (); break;
       case 'f':   // dump memory frames and free frame list
-        dump_memoryframe_info (); break;
+        //dump_memoryframe_info ();
+		printf("endless loop until you implement free list\n");
+		break;
       case 'n':   // dump the content of the entire memory
         dump_memory (); break;
       case 'e':   // dump events in clock.c
