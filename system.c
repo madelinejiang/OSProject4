@@ -35,7 +35,6 @@ void main ()
   initialize_system ();
   start_terminal ();   // term.c
   start_swap_manager ();   // swap.c
-  //start_client_submission ();
   process_admin_command ();   // admin.c
 
   // admin terminated the system, wait for other components to terminate

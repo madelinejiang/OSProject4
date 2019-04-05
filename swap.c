@@ -243,7 +243,6 @@ void start_swap_manager ()
     exit(1);
   } else {
     printf("SwapQ thread created successfully!\n");
-    process_swapQ();
   }
 
 }

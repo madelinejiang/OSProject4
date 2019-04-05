@@ -137,6 +137,7 @@ void load_idle_process ()
   // load 1 ifgo instructions (2 words) and 1 data for the idle process
   opcode = OPifgo;   operand = 0;
   instr = (opcode << opcodeShift) | operand;
+  
   direct_put_instruction (frame, 0, instr);   // 0,1,2 are offset
   direct_put_instruction (frame, 1, instr);
   direct_put_data (frame, 2, 1);

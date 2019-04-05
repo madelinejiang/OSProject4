@@ -321,5 +321,6 @@ void memory_agescan ()
 void initialize_memory_manager ()
 { 
   // initialize memory and add page scan event request
+  initialize_memory();
 }
 
