@@ -1,3 +1,6 @@
 *.o
 .vscode/
 *.stackdump
+comments.txt
+terminal.out
+swap.disk
