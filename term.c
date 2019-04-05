@@ -71,35 +71,41 @@ char *outstr;
   node->str = outstr;
   node->type = type;
   node->next = NULL;
-  if (termQtail == NULL) // termQhead would be NULL also
-  { termQtail = node; termQhead = node; }
-  else // insert to tail
-  { termQtail->next = node; termQtail = node; }
-  if (Debug) dump_termio_queue ();
+  sem_wait(&term_mutex);
+    if (termQtail == NULL) // termQhead would be NULL also
+      { termQtail = node; termQhead = node; }
+    else // insert to tail
+      { termQtail->next = node; termQtail = node; }
+    if (Debug) dump_termio_queue ();
+    sem_post(&term_semaq);
+  sem_post(&term_mutex);
+  
 }
 
 // remove the termIO job from queue and call terminal_output for printing
 // after printing, put the job to endWait list and set endWait interrupt
 void handle_one_termio ()
 { TermQnode *node;
-
-  if (Debug) dump_termio_queue ();
-  if (termQhead == NULL)
-    printf ("No process in terminal queue!!!\n");
-  else 
-  { node = termQhead;
-    terminal_output (node->pid, node->str);
-    if (node->type != endIO)
-    { insert_endWait_process (node->pid);
-      set_interrupt (endWaitInterrupt);
-    }   // if it is the endIO type, then job done, just clean termio queue
-
-    if (Debug) printf ("Remove term queue %d %s\n", node->pid, node->str);
-    termQhead = node->next;
-    if (termQhead == NULL) termQtail = NULL;
-    free (node->str); free (node);
+  sem_wait(&term_semaq);
+  sem_wait(&term_mutex);
     if (Debug) dump_termio_queue ();
-  }
+    if (termQhead == NULL)
+      printf ("No process in terminal queue!!!\n");
+    else 
+    { node = termQhead;
+      terminal_output (node->pid, node->str);
+      if (node->type != endIO)
+      { insert_endWait_process (node->pid);
+        set_interrupt (endWaitInterrupt);
+      }   // if it is the endIO type, then job done, just clean termio queue
+
+      if (Debug) printf ("Remove term queue %d %s\n", node->pid, node->str);
+      termQhead = node->next;
+      if (termQhead == NULL) termQtail = NULL;
+      free (node->str); free (node);
+      if (Debug) dump_termio_queue ();
+    }
+  sem_post(&term_mutex);
 }
 
 
@@ -129,7 +135,8 @@ pthread_t termThread;
 
 void start_terminal ()
 { int ret;
-
+  ret = sem_init(&term_mutex, 0, 1);
+  ret = sem_init(&term_semaq, 0, 0);
   fterm = fopen (termFN, "w");
   ret = pthread_create (&termThread, NULL, termIO, NULL);
   if (ret < 0) printf ("TermIO thread creation problem\n");
@@ -138,7 +145,7 @@ void start_terminal ()
 
 void end_terminal ()
 { int ret;
-
+sem_post(&term_semaq);
   fclose (fterm);
   ret = pthread_join (termThread, NULL);
   printf ("TermIO thread has terminated %d\n", ret);

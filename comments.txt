@@ -1,0 +1,6 @@
+change fopen state to r in load_process_to_swap in loader (was erasing prog.1)
+overhauled insert_swapQ so it wouldn't give segmentation faults
+altered load_process_to_swap. Ensured return type (this was giving errors)
+
+Current status: no segfaults after submitting to swapQ. 
+question should the swapQ have 5 entries
