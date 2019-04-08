@@ -190,7 +190,7 @@ void dump_swapQ ()
 void insert_swapQ (pid, page, buf, act, finishact)
 int pid, page, act, finishact;
 unsigned *buf;
-{ 
+{   sem_wait(&swapq_mutex);
   SwapQnode *node = (SwapQnode *) malloc(sizeof(SwapQnode));
 
   node->pid = pid;
@@ -201,7 +201,6 @@ unsigned *buf;
   ////MJ
   if (swapQhead == NULL) { //empty swapQ so make it the head
 	  swapQhead = node;
-	  swapQhead->next = NULL;
   }
   else {// not an empty swapQ, add to the tail
 	  swapQtail->next = node;
@@ -210,31 +209,70 @@ unsigned *buf;
   swapQtail->next = NULL;
   sem_post(&swap_semaq);
 
-  printf("finished inserting one item into swapQ\n");
+  printf("finished inserting one item into swapQ\n");//debugging
+
+  sem_post(&swapq_mutex);
 }
 
 void *process_swapQ ()
 {
   // called as the entry function for the swap thread
   //wait for something in the queue before proceeding
-  sem_wait(&swap_semaq);
-  sem_wait(&swapq_mutex);
-    //<critical section>
-    //dequeue
-    SwapQnode *node = swapQhead;
-    swapQhead = node->next;
+	while (systemActive) {
+		sem_wait(&swap_semaq);
+		sem_wait(&swapq_mutex);
+		//<critical section>
+		//dequeue
+		SwapQnode *node = swapQhead;
+		swapQhead = node->next;
 
-    //prepare for the disk action
-    switch(node->act){
-      case actRead:
-        break;
-      case actWrite:
-        break;
-      default:
-        break;
-    }
-  sem_post(&swapq_mutex);
+		//prepare for the disk action
+		//
+		switch (node->act) {
+		case actRead:
+		{
+		//read from swap space
+			read_swap_page(node->pid, node->page, node->buf);
+		}
+		break;
+		case actWrite: {
+			//write to swap space
+			write_swap_page(node->pid, node->page,node->buf);
+			printf("wrote to swap.disk %d %d %u\n", node->pid, node->page, node->buf);
+		}
+			break;
+		default:
+			break;
+		}
 
+		switch (node->finishact) {
+		case Nothing:
+			break;
+		case freeBuf:
+			if (node->act==actRead) {
+				//should only occur for write not read
+				printf("Attempt to free buffer during read\n");
+			}
+			else {
+				node->buf = NULL;
+			}
+			break;
+		case toReady:
+			insert_endWait_process(node->pid);
+			set_interrupt(endWaitInterrupt);
+			break;
+		case Both:
+			node->buf = NULL;
+			insert_endWait_process(node->pid);
+			set_interrupt(endWaitInterrupt);
+			break;
+		default:
+			break;
+
+		}
+
+		sem_post(&swapq_mutex);
+	}
 
 }
 
@@ -264,8 +302,9 @@ void end_swap_manager ()
   sem_post(&swap_semaq);
   sem_post(&swapq_mutex);
   sem_post(&disk_mutex);
-
+  close(diskfd);
   int ret = pthread_join(swapQThread, NULL);
+
   printf("Swap Q thread has terminated. Return int: %d\n", ret);
 }
 
