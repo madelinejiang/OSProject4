@@ -76,6 +76,51 @@ int calculate_memory_address (unsigned offset, int rwflag)
   // if there is a page fault, need to set the page fault interrupt
   // also need to set the age and dirty fields accordingly
   // returns memory address or mPFault or mError
+
+  // check to see if offset is out of memory address
+
+  // get PTindex from offset
+  //in case offset is 0, pageIndex will be -1, but it should be 0
+  int pageIndex;
+  if(offset == 0){
+    pageIndex = 0;
+  } else {
+    pageIndex = (offset) / pageSize + 1;
+  }
+  
+  if(pageIndex >= maxPpages){
+    // Definintely a memory access violation, outside of pagetable addressing
+    return mError;
+  }
+
+  //after we get the pageIndex, check the PT and return appropriate result
+  int frame = CPU.PTptr[pageIndex];
+  switch(frame){
+    case nullPage:
+      // return this since this is a access violation
+      return mError;
+    case diskPage:
+      // return this since this is a page fault
+      if(rwflag == flagRead){
+        set_interrupt(pFaultException);
+        return mPFault;
+      } else if(rwflag == flagWrite){
+        // submit write to swapspace buffer? 
+      } else {
+        return mError;
+      }
+    case pendingPage:
+      // Not sure what to do here... Nothing?
+      // If it hits this, then we've done something wrong I think
+      return -1;
+    default:
+      int memOffset = frame * pageSize;
+      int pageOffset = offset - pageIndex * pageSize;
+      int address = memOffset + pageOffset;
+      memFrame[frame].dirty = dirtyFrame;
+  }
+  //Should not reach this point
+  return -7; 
 }
 
 int get_data (int offset)
@@ -83,6 +128,19 @@ int get_data (int offset)
   // call calculate_memory_address to get memory address
   // copy the memory content to MBR
   // return mNormal, mPFault or mError
+
+  int address = calculate_memory_address(offset, flagRead);
+
+  switch(address){
+    case mError:
+      return mError;
+    case mPFault:
+      return mPFault;
+    default:
+      CPU.MBR = Memory[address].mData;
+      return mNormal;
+  }
+
 }
 
 int put_data (int offset)
@@ -90,6 +148,19 @@ int put_data (int offset)
   // call calculate_memory_address to get memory address
   // copy MBR to memory 
   // return mNormal, mPFault or mError
+
+  int address = calculate_memory_address(offset, flagWrite);
+
+  switch(address){
+    case mError:
+      return mError;
+    case mPFault:
+      return mPFault;
+    default:
+      Memory[address].mData = CPU.MBR;
+      // dirty bit set in calculate_address since it's easier there than here
+      return mNormal;
+  }
 }
 
 int get_instruction (int offset)
@@ -97,6 +168,21 @@ int get_instruction (int offset)
   // call calculate_memory_address to get memory address
   // convert memory content to opcode and operand
   // return mNormal, mPFault or mError
+
+  int address = calculate_memory_address(offset, flagRead);
+
+  switch(address){
+    case mError:
+      return mError;
+    case mPFault:
+      return mPFault;
+    default:
+      int instr = Memory[address].mInstr;
+      CPU.IRopcode = instr >> opcodeShift; 
+      CPU.IRoperand = instr & operandMask;
+      // dirty bit set in calculate_address since it's easier there than here
+      return mNormal;
+  }
 }
 
 // these two direct_put functions are only called for loading idle process
@@ -140,9 +226,10 @@ void dump_free_list ()
 { int i = freeFhead;
 
   printf ("******************** Free Frame List\n");
-  //Since frame 0 is always going to be OS, can treat as a null index
-  while(i > 0){ //currently gives an endless loop MJ
+  
+  while(i > nullIndex){ //currently gives an endless loop MJ
     printf ("Free Frame %d: ", i);
+    i = memFrame[i].next;
   }
 }
 
@@ -169,8 +256,11 @@ void  update_frame_info (findex, pid, page)
 int findex, pid, page;
 {
   // update the metadata of a frame, need to consider different update scenarios
-  // need this function also becuase loader also needs to update memFrame fields
+  // need this function also because loader also needs to update memFrame fields
   // while it is better to not to expose memFrame fields externally
+
+  memFrame[findex].pid = pid;
+  memFrame[findex].page = page;
 }
 
 // should write dirty frames to disk and remove them from process page table
@@ -193,19 +283,22 @@ int select_agest_frame ()
 // this func always returns a frame, either from free list or get one with lowest age
 int get_free_frame (){ 
   int freeFrameIndex;
-  //if the there is a head, then there are free pages
-  if(freeFhead > 0){
+  // if the there is a head, then there are free pages
+  // If freeFhead is 0, then we've done something very wrong somewhere
+  // It should never be 0
+  // same for next and prev for any Q element
+  if(freeFhead > nullIndex){
     freeFrameIndex = freeFhead;
     int next = memFrame[freeFhead].next;
     //if there is no next frame, then tail and head must be set to 0
-    if(next > 0){
-      memFrame[next].prev = 0;
+    if(next > nullIndex){
+      memFrame[next].prev = nullIndex;
       freeFhead = next;
     } else {
-      freeFhead = 0;
-      freeFtail = 0;
+      freeFhead = nullIndex;
+      freeFtail = nullIndex;
     }
-    memFrame[freeFhead].next = 0;
+    memFrame[freeFhead].next = nullIndex;
     return freeFrameIndex;
   } else {
     //we are assuming that a free frame will go immediately to work
@@ -277,6 +370,8 @@ int pid, page, frame;
 { 
   // update the page table entry for process pid to point to the frame
   // or point to disk or null
+
+  PCB[pid]->PTptr[page] = frame;
 }
 
 int free_process_memory (int pid)
@@ -288,11 +383,37 @@ int free_process_memory (int pid)
 void dump_process_pagetable (int pid)
 { 
   // print page table entries of process pid
+  printf ("************** Page Table for Process pid: %d\n", pid);
+  int i;
+  for (i=0; i<maxPpages; i++) { 
+    printf ("Page %d @ %d: ", i, PCB[pid]->PTptr[i]); 
+  }
+
 }
 
 void dump_process_memory (int pid)
 { 
   // print out the memory content for process pid
+  printf ("************** Memory Content for Process pid: %d\n", pid);
+  int i, frame;
+  for (i=0; i<maxPpages; i++) { 
+    frame = PCB[pid]->PTptr[pid];
+    switch(frame){
+      case nullPage:
+        // break out of for loop by setting i to maxPpages
+        i = maxPpages;
+        break;
+      case diskPage:
+        printf("Page %d is in DISK\n", i);
+        break;
+      case pendingPage:
+        printf("Page %d is in SWAPQ\n", i);
+        break;
+      default:
+        dump_one_frame(frame);
+        break;
+    }
+  }
 }
 
 //==========================================

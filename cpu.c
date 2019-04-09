@@ -54,11 +54,24 @@ void handle_interrupt ()
       // interrupt may overwrite, move all IO done processes (maybe > 1)
       clear_interrupt (endWaitInterrupt);
     }
+
+    if ((CPU.interruptV & ageInterrupt) == ageInterrupt){
+      printf("age wait interrupt handled! ... NOT\n");
+      memory_agescan();
+      clear_interrupt(ageInterrupt);
+    }
+
+    if ((CPU.interruptV & pFaultException) == pFaultException){
+      printf("gotta handle that page fault\n");
+      page_fault_handler();
+      clear_interrupt(pFaultException);
+    }
+
+    // Done last in case exeStatus is changed for another reason
     if ((CPU.interruptV & tqInterrupt) == tqInterrupt)
     { if (CPU.exeStatus == eRun) CPU.exeStatus = eReady;
       clear_interrupt (tqInterrupt);
     }
-    // *** ADD CODE to handle page fault and periodical age scan
   }
 }
 
@@ -94,21 +107,41 @@ void execute_instruction ()
   switch (CPU.IRopcode)
   { case OPload:
       // *** ADD CODE for the instruction
+      CPU.AC = CPU.MBR;
+      break;
     case OPadd:
       // *** ADD CODE for the instruction
+      CPU.AC += CPU.MBR;
+      break;
     case OPmul:
       // *** ADD CODE for the instruction
+      CPU.AC *= CPU.MBR;
+      break;
     case OPifgo:  
       // *** ADD CODE for the instruction
+      if(CPU.MBR > 0)
+        { CPU.PC =  CPU.IRoperand - 1; }
+      break;
     case OPstore:
       // *** ADD CODE for the instruction
+      put_data (CPU.IRoperand); 
+      break;
     case OPprint:
       // *** ADD CODE for the instruction
+      char* str = (char*) malloc(16 * sizeof(char));
+      sprintf(str, "%f", CPU.MBR);
+      insert_termio(CPU.Pid, str, regularIO);
+      break;
     case OPsleep:
       // *** ADD CODE for the instruction
-      CPU.exeStatus = eWait; break;
+      if(CPU.IRoperand > 0){
+        add_timer(CPU.IRoperand, CPU.Pid, actReadyInterrupt, 0);
+        CPU.exeStatus = eWait;
+      }
+      break;
     case OPend:
       // *** ADD CODE for the instruction
+      // Slightly confused what needs to done here
       CPU.exeStatus = eEnd; break;
     default:
       printf ("Illegitimate OPcode in process %d\n", CPU.Pid);

@@ -82,30 +82,30 @@ int load_process_to_swap (int pid, char *fname)
   //Pages needed needs to check for msize - 1, because if msize is 32, it should still fit on 1 page
   //And I HIGHLY doubt we will get an msize of 0, but may add check later down the line
 
-  ////msize is the number of byte addresses we will need. pageSize=8 according to config. 
-  ////int pagesNeeded = (msize - 1) / pageSize + 1;
-  int pagesNeeded = ceil((float)msize / (float)pageSize);
+  // msize is the number of byte addresses we will need. pageSize=8 according to config. 
+  int pagesNeeded = (msize - 1) / pageSize + 1;
+  //int pagesNeeded = ceil((float)msize / (float)pageSize);
   int loadedPages = 0;//keep track of successfully loaded pages. in the future could have error checking with malloc
   printf("msize is %d. pageSize is %d. Need %d pages\n", msize, pageSize, pagesNeeded);
   int line = 0;
   printf("%d\n", pagesNeeded);
   for(i = 0; i < pagesNeeded; i++){
-	  printf("value of line is %d\n", line);//MJ
+	  printf("value of line is %d\n", line);
     mType *page = (mType *) malloc (pageSize*sizeof(mType));
-    for(j=0; j < pageSize; j++){ //
+    for(j=0; j < pageSize; j++){
       if(line < msize){
         if(line < numinstr){
           load_instruction(page, i, j);
         } else { load_data(page, i, j);}
-		line++;//MJ
+		    line++;
       }  else {
         break;
       }
     }
     insert_swapQ(pid, i, (unsigned *) page, actWrite, freeBuf);
-	printf("submitted a page\n");
-	loadedPages++;
-    PCB[pid]->PTptr[i] = diskPage;
+    printf("submitted a page\n");
+    loadedPages++;
+    PCB[pid]->PTptr[i] = pendingPage;
   }
   fclose(progFd);
   return loadedPages;
@@ -118,16 +118,25 @@ int load_pages_to_memory (int pid, int numpages)
   // ask swap.c to place the process to ready queue only after the last load
   // do not forget to update the page table of the process
   // this function has some similarity with page fault handler
-  int k;
-  for(k = 0; k < numpages; k++){
-    unsigned *buf = malloc(pageSize * dataSize);
-    insert_swapQ(pid, k, buf, actRead, toReady); 
+  int k, j, base;
+  for(k = 0; k < numpages-1; k++){
+    // NULL is passed for buf, since swap will have to take care of the loading into memory
+    // if I am to understand her code better
+    insert_swapQ(pid, k, NULL, actRead, Nothing); 
 
-    //update PCB
+    // update appropriate page to pending
+    PCB[pid]->PTptr[k] = pendingPage
+  }
+  if(numpages > 0){
+    insert_swapQ(pid, k, NULL, actRead, toReady); 
+    // update appropriate page to pending
+    PCB[pid]->PTptr[k] = pendingPage
   }
 
+  // TODO: Let's consider instead of int numpages, loading the 1st page of instructions 
+  // and 1st page of data, just a thought. 
   
-  return 0;
+  return progNormal;
 }
 
 int load_process (int pid, char *fname)
