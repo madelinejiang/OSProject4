@@ -46,6 +46,10 @@ int diskRWtime;   // simulated time (sleep) for disk IO (a page)
 typedef float mdType;
 #define mdInFormat "%f"
 #define mdOutFormat "%.2f"
+#define pendingPage -3  // page is pending till it is actually swapped
+// have to ensure: #memory-frames < address-space/2, (pageSize >= 2)
+//    becuase we use negative values with the frame number
+// nullPage & diskPage are used in process page table 
 
 typedef union     // type definition for memory (its content)
 { mdType mData;
@@ -160,6 +164,8 @@ typePCB **PCB;
 #define nullPid -1
 #define osPid 0
 #define idlePid 1
+
+int currentPid;
 
 void initialize_process_manager ();
 

@@ -47,8 +47,11 @@ void process_admin_command ()
         dump_termio_queue (); break;
       case 'w':   // dump swap queue
         dump_swapQ (); break;
+	  case 'd':
+		  dump_swap(); break;//dump swap.disk
       case 'T':  // Terminate, do nothing, terminate in while loop
         systemActive = 0; break;
+
       default:   // can be used to yield to client submission input
         printf ("Error: Incorrect command!!!\n");
     }

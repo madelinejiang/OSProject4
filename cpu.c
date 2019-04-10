@@ -128,9 +128,11 @@ void execute_instruction ()
       break;
     case OPprint:
       // *** ADD CODE for the instruction
-      char* str = (char*) malloc(16 * sizeof(char));
-      sprintf(str, "%f", CPU.MBR);
-      insert_termio(CPU.Pid, str, regularIO);
+	{
+		char* str = (char*)malloc(16 * sizeof(char));
+		sprintf(str, "%f", CPU.MBR);
+		insert_termio(CPU.Pid, str, regularIO);
+	}
       break;
     case OPsleep:
       // *** ADD CODE for the instruction

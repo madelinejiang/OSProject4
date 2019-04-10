@@ -125,12 +125,12 @@ int load_pages_to_memory (int pid, int numpages)
     insert_swapQ(pid, k, NULL, actRead, Nothing); 
 
     // update appropriate page to pending
-    PCB[pid]->PTptr[k] = pendingPage
+	PCB[pid]->PTptr[k] = pendingPage;
   }
   if(numpages > 0){
     insert_swapQ(pid, k, NULL, actRead, toReady); 
     // update appropriate page to pending
-    PCB[pid]->PTptr[k] = pendingPage
+	PCB[pid]->PTptr[k] = pendingPage;
   }
 
   // TODO: Let's consider instead of int numpages, loading the 1st page of instructions 

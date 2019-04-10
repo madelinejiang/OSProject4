@@ -27,10 +27,7 @@ int freeFhead, freeFtail;   // the head and tail of free frame list
 #define nullIndex -1   // free frame list null pointer
 #define nullPage -1   // page does not exist yet
 #define diskPage -2   // page is on disk swap space
-#define pendingPage -3  // page is pending till it is actually swapped
-   // have to ensure: #memory-frames < address-space/2, (pageSize >= 2)
-   //    becuase we use negative values with the frame number
-   // nullPage & diskPage are used in process page table 
+
 
 // define values for fields in FrameStruct
 #define zeroAge 0x00000000
@@ -113,11 +110,14 @@ int calculate_memory_address (unsigned offset, int rwflag)
       // Not sure what to do here... Nothing?
       // If it hits this, then we've done something wrong I think
       return -1;
-    default:
-      int memOffset = frame * pageSize;
-      int pageOffset = offset - pageIndex * pageSize;
-      int address = memOffset + pageOffset;
-      memFrame[frame].dirty = dirtyFrame;
+	  break;
+	default: {
+		int memOffset = frame * pageSize;
+		int pageOffset = offset - pageIndex * pageSize;
+		int address = memOffset + pageOffset;
+		memFrame[frame].dirty = dirtyFrame;
+		return -1;
+	}
   }
   //Should not reach this point
   return -7; 
@@ -177,11 +177,13 @@ int get_instruction (int offset)
     case mPFault:
       return mPFault;
     default:
-      int instr = Memory[address].mInstr;
-      CPU.IRopcode = instr >> opcodeShift; 
-      CPU.IRoperand = instr & operandMask;
-      // dirty bit set in calculate_address since it's easier there than here
-      return mNormal;
+	{
+		int instr = Memory[address].mInstr;
+		CPU.IRopcode = instr >> opcodeShift;
+		CPU.IRoperand = instr & operandMask;
+		// dirty bit set in calculate_address since it's easier there than here
+		return mNormal;
+	}
   }
 }
 

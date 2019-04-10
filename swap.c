@@ -40,6 +40,7 @@ int read_swap_page (int pid, int page, unsigned *buf)
 { 
   // reference the previous code for this part
   // but previous code was not fully completed
+	buf = (char*)malloc(sizeof(char*)*pagedataSize);
   if (pid < 2 || pid > maxProcess) 
   { printf ("Error: Incorrect pid for disk read: %d\n", pid); 
     return (-1);
@@ -47,7 +48,9 @@ int read_swap_page (int pid, int page, unsigned *buf)
   int location = (pid-2) * PswapSize + page*pagedataSize;
   int ret = lseek (diskfd, location, SEEK_SET);
   if (ret < 0) perror ("Error lseek in read: \n");
-  int retsize = read (diskfd, (char *)buf, pagedataSize);
+
+
+  int retsize = read (diskfd, buf, pagedataSize);
   if (retsize != pagedataSize) 
   { printf ("Error: Disk read returned incorrect size: %d\n", retsize); 
     exit(-1);
@@ -69,9 +72,9 @@ int write_swap_page (int pid, int page, unsigned *buf)
   int location = (pid-2) * PswapSize + page*pagedataSize;
   int ret = lseek (diskfd, location, SEEK_SET);
   if (ret < 0) perror ("Error lseek in write: \n");
-  int retsize = write (diskfd, (char *)buf, pagedataSize);
+  int retsize = write (diskfd, buf, pagedataSize);
   if (retsize != pagedataSize) 
-    { printf ("Error: Disk read returned incorrect size: %d\n", retsize); 
+    { printf ("Error: Disk write returned incorrect size: %d\n", retsize); 
       exit(-1);
     }
   usleep (diskRWtime);
@@ -113,7 +116,14 @@ void dump_process_swap (int pid)
   printf ("****** Dump swap pages for process %d\n", pid);
   for (j=0; j<maxPpages; j++) dump_process_swap_page (pid, j);
 }
-
+void dump_swap() {
+	int pid;
+	if (currentPid == 2) {
+		printf("No processes loaded in swap.disk");
+	}
+	for (pid = idlePid + 1; pid < currentPid; pid++)
+		if (PCB[pid] != NULL) dump_process_swap(pid);
+}
 // open the file with the swap space size, initialize content to 0
 void initialize_swap_space ()
 { int ret, i, j, k;
