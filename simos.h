@@ -105,6 +105,7 @@ struct
   mdType MBR;
   int IRopcode;
   int IRoperand;
+  int MDbase;
   int *PTptr;
   int exeStatus;
   unsigned interruptV;
@@ -149,6 +150,7 @@ typedef struct
   int PC;
   mdType AC;
   int *PTptr;
+  int MDbase;
   int exeStatus;
   int timeUsed;
   int numPF;
@@ -251,7 +253,7 @@ void process_admin_command ();
 void start_client_submission ();
 void end_client_submission ();
 void one_submission ();
-int load_process (int pid, char *fname);
+int load_process (int pid, char *fname, int*dataOffset);
 void load_idle_process ();
 void start_swap_manager ();
 

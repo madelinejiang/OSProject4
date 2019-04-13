@@ -279,7 +279,8 @@ void *process_swapQ ()
 			break;
 
 		}
-
+		free(node);
+		node = NULL;
 		sem_post(&swapq_mutex);
 	}
 
