@@ -537,7 +537,8 @@ void page_fault_handler ()
 	// update the frame metadata and the page tables of the involved processes
 	int pagein = (CPU.IRoperand) / pageSize;
 	int pidin = CPU.Pid;
-	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
+  mType inbuf[pageSize];
+	insert_swapQ(pidin, pagein, (unsigned*) inbuf, actRead, toReady);
 	update_frame_info(frame, CPU.Pid, pagein);
 	update_process_pagetable(CPU.Pid, pagein, frame);
 }
