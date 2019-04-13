@@ -136,7 +136,9 @@ int load_pages_to_memory (int pid, int numpages)
   }
 
   // TODO: Let's consider instead of int numpages, loading the 1st page of instructions 
-  // and 1st page of data, just a thought. 
+  // and 1st page of data, just a thought.
+  //finding the first page of instructions is easy. finding the first page of data is not
+
   
   return progNormal;
 }
