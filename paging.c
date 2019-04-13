@@ -504,16 +504,45 @@ void dump_process_memory (int pid)
 
 #define sendtoReady 1  // has to be the same as those in swap.c
 #define notReady 0   
-#define actRead 0   
-#define actWrite 1
 
 void page_fault_handler ()
 { 
-  // handle page fault
-  // obtain a free frame or get a frame with the lowest age
-  // if the frame is dirty, insert a write request to swapQ 
-  // insert a read request to swapQ to bring the new page to this frame
-  // update the frame metadata and the page tables of the involved processes
+	// pidin, pagein, inbuf: for the page with PF, needs to be brought into mem 
+  // pidout, pageout, outbuf: for the page to be swapped out (write to disk)
+  // if there is no page to be swapped out (not dirty), then pidout = nullPid
+  // inbuf and outbuf are the actual memory page content
+  /*=======================^From original file*========================================*/
+  // context switch On a page fault, the state of the faulting program is saved and the O.S.takes over
+	//via process.c (TODO)
+	int frame = get_free_frame();
+	if (frame == nullIndex) {//no free frames
+		//get the lowest age frame
+		frame=select_agest_frame();
+		//need to identify the pid of the frame being swapped out
+		int pidout = memFrame[frame].pid;
+		int pageout = memFrame[frame].page;
+
+		if (memFrame[frame].dirty == dirtyFrame) {
+			// if the frame is dirty, insert a write request to swapQ 
+			//buf will be the contents of the frame in memory
+			//mType outbuf = (mType *)malloc(pageSize * sizeof(mType));
+			//mType outbuf = Memory[frame * pageSize];
+			int j = 0;
+			mType outbuf[pageSize];
+			for (int i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
+				outbuf[j] = Memory[i];
+				j++;
+			}
+			insert_swapQ(pidout, pageout, (unsigned*) outbuf, actWrite, notReady);
+		}
+		//else since the frame isn't dirty, we don't need to write back to swapQ
+	}
+	// update the frame metadata and the page tables of the involved processes
+	int pagein = (CPU.IRoperand) / pageSize;
+	int pidin = CPU.Pid;
+	insert_swapQ(pidin, pagein, NULL, actRead, sendtoReady);
+	update_frame_info(frame, CPU.Pid, pagein);
+	update_process_pagetable(CPU.Pid, pagein, frame);
 }
 
 // scan the memory and update the age field of each frame

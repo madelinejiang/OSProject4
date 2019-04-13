@@ -107,7 +107,7 @@ int load_process_to_swap (int pid, char *fname, int *dataOffset)
     insert_swapQ(pid, i, (unsigned *) page, actWrite, freeBuf);
     printf("submitted a page\n");
     loadedPages++;
-    update_process_pagetable (pid, i, pendingPage)
+	update_process_pagetable(pid, i, pendingPage);
   }
   fclose(progFd);
   return loadedPages;
@@ -127,12 +127,12 @@ int load_pages_to_memory (int pid, int numpages)
     insert_swapQ(pid, k, NULL, actRead, Nothing); 
 
     // update appropriate page to pending
-    update_process_pagetable (pid, k, pendingPage)
+	update_process_pagetable(pid, k, pendingPage);
   }
   if(numpages > 0){
     insert_swapQ(pid, k, NULL, actRead, toReady); 
     // update last page to pending as well
-    update_process_pagetable (pid, k, pendingPage)
+	update_process_pagetable(pid, k, pendingPage);
   }
 
   // TODO: Let's consider instead of int numpages, loading the 1st page of instructions 
