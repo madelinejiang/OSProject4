@@ -307,7 +307,7 @@ int get_free_frame (){
     //we are assuming that a free frame will go immediately to work
     //so dequeue the frame from list
     //add age stuff later
-  return -1;
+  return nullIndex;
   }
 } 
 
@@ -420,7 +420,7 @@ void dump_process_memory (int pid)
 }
 
 //==========================================
-// the major functions for paging, invoked externally
+// the major functions for paging, invoked externally(mType *)malloc(pageSize * sizeof(mType))
 //==========================================
 
 #define sendtoReady 1  // has to be the same as those in swap.c
@@ -438,7 +438,7 @@ void page_fault_handler ()
   // context switch On a page fault, the state of the faulting program is saved and the O.S.takes over
 	//via process.c (TODO)
 	int frame = get_free_frame();
-	if (frame == -1) {//no free frames
+	if (frame == nullIndex) {//no free frames
 		//get the lowest age frame
 		frame=select_agest_frame();
 		//need to identify the pid of the frame being swapped out
@@ -450,18 +450,16 @@ void page_fault_handler ()
 			//buf will be the contents of the frame in memory
 			mType *outbuf = (mType *)malloc(pageSize * sizeof(mType));
 			outbuf = Memory[frame * pageSize];
-			void insert_swapQ(pidout, pageout, outbuf, actWrite, Nothing);
+			void insert_swapQ(pidout, pageout, (unsigned*) outbuf, actWrite, Nothing);
 		}
 		//else since the frame isn't dirty, we don't need to write back to swapQ
 	}
 	// update the frame metadata and the page tables of the involved processes
-	int pagein = (CPU.IRoperand) / pageSize + 1;
+	int pagein = (CPU.IRoperand) / pageSize;
 	int pidin = CPU.Pid;
 	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
-	update_frame_info(frame, CPU.Pid, pageIndex);//
-	update_process_pagetable(CPU.Pid, pageIndex, frame);
-
-  
+	update_frame_info(frame, CPU.Pid, pagein);
+	update_process_pagetable(CPU.Pid, pagein, frame);
 }
 
 // scan the memory and update the age field of each frame
