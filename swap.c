@@ -40,7 +40,7 @@ int read_swap_page (int pid, int page, unsigned *buf)
 { 
   // reference the previous code for this part
   // but previous code was not fully completed
-	buf = (char*)malloc(sizeof(char*)*pagedataSize);
+buf = (unsigned*)malloc(sizeof(unsigned*)*pagedataSize);
   if (pid < 2 || pid > maxProcess) 
   { printf ("Error: Incorrect pid for disk read: %d\n", pid); 
     return (-1);
@@ -254,7 +254,6 @@ void *process_swapQ ()
 		default:
 			break;
 		}
-
 		switch (node->finishact) {
 		case Nothing:
 			break;

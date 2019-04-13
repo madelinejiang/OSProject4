@@ -271,6 +271,7 @@ int findex, pid, page;
 // so, the process can continue using the page, till actual swap
 void addto_free_frame (int findex, int status)
 {
+
 }
 
 int select_agest_frame ()
@@ -429,11 +430,38 @@ void dump_process_memory (int pid)
 
 void page_fault_handler ()
 { 
-  // handle page fault
-  // obtain a free frame or get a frame with the lowest age
-  // if the frame is dirty, insert a write request to swapQ 
-  // insert a read request to swapQ to bring the new page to this frame
-  // update the frame metadata and the page tables of the involved processes
+	// pidin, pagein, inbuf: for the page with PF, needs to be brought into mem 
+   // pidout, pageout, outbuf: for the page to be swapped out (write to disk)
+   // if there is no page to be swapped out (not dirty), then pidout = nullPid
+  // inbuf and outbuf are the actual memory page content
+/*=======================^From original file*========================================*/
+  // context switch On a page fault, the state of the faulting program is saved and the O.S.takes over
+	//via process.c (TODO)
+	int frame = get_free_frame();
+	if (frame == -1) {//no free frames
+		//get the lowest age frame
+		frame=select_agest_frame();
+		//need to identify the pid of the frame being swapped out
+		int pidout = memFrame[frame].pid;
+		int pageout = memFrame[frame].page;
+
+		if (memFrame[frame].dirty == dirtyFrame) {
+			// if the frame is dirty, insert a write request to swapQ 
+			//buf will be the contents of the frame in memory
+			mType *outbuf = (mType *)malloc(pageSize * sizeof(mType));
+			outbuf = Memory[frame * pageSize];
+			void insert_swapQ(pidout, pageout, outbuf, actWrite, Nothing);
+		}
+		//else since the frame isn't dirty, we don't need to write back to swapQ
+	}
+	// update the frame metadata and the page tables of the involved processes
+	int pagein = (CPU.IRoperand) / pageSize + 1;
+	int pidin = CPU.Pid;
+	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
+	update_frame_info(frame, CPU.Pid, pageIndex);//
+	update_process_pagetable(CPU.Pid, pageIndex, frame);
+
+  
 }
 
 // scan the memory and update the age field of each frame
