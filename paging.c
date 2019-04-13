@@ -502,9 +502,6 @@ void dump_process_memory (int pid)
 // the major functions for paging, invoked externally
 //==========================================
 
-#define sendtoReady 1  // has to be the same as those in swap.c
-#define notReady 0   
-
 void page_fault_handler ()
 { 
 	// pidin, pagein, inbuf: for the page with PF, needs to be brought into mem 
@@ -533,14 +530,14 @@ void page_fault_handler ()
 				outbuf[j] = Memory[i];
 				j++;
 			}
-			insert_swapQ(pidout, pageout, (unsigned*) outbuf, actWrite, notReady);
+			insert_swapQ(pidout, pageout, (unsigned*) outbuf, actWrite, Nothing);
 		}
 		//else since the frame isn't dirty, we don't need to write back to swapQ
 	}
 	// update the frame metadata and the page tables of the involved processes
 	int pagein = (CPU.IRoperand) / pageSize;
 	int pidin = CPU.Pid;
-	insert_swapQ(pidin, pagein, NULL, actRead, sendtoReady);
+	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
 	update_frame_info(frame, CPU.Pid, pagein);
 	update_process_pagetable(CPU.Pid, pagein, frame);
 }
