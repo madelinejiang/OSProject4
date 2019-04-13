@@ -6,3 +6,4 @@ terminal.out
 swap.disk
 *.xlsx
 *.exe
+*.exe.stackdump
