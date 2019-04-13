@@ -514,12 +514,22 @@ void dump_process_memory (int pid)
 
 #define sendtoReady 1  // has to be the same as those in swap.c
 #define notReady 0   
-
+void load_page_toMemory(int pid, int page, (*unsigned) pagecontents) {
+	int frame = get_free_frame();
+	if (frame == nullIndex) {
+		//should not occur because maxProcess check
+		//return error?
+	}
+	//iterate though page contents into Memory[frame*pagesize]+i
+	//update metadata
+	//change pendingPage status
+	
+}
 void page_fault_handler ()
 { 
-	// pidin, pagein, inbuf: for the page with PF, needs to be brought into mem 
-   // pidout, pageout, outbuf: for the page to be swapped out (write to disk)
-   // if there is no page to be swapped out (not dirty), then pidout = nullPid
+  // pidin, pagein, inbuf: for the page with PF, needs to be brought into mem 
+  // pidout, pageout, outbuf: for the page to be swapped out (write to disk)
+  // if there is no page to be swapped out (not dirty), then pidout = nullPid
   // inbuf and outbuf are the actual memory page content
 /*=======================^From original file*========================================*/
   // context switch On a page fault, the state of the faulting program is saved and the O.S.takes over
@@ -543,14 +553,14 @@ void page_fault_handler ()
 				outbuf[j] = Memory[i];
 				j++;
 			}
-			insert_swapQ(pidout, pageout, (unsigned*) outbuf, actWrite, notReady);
+			insert_swapQ(pidout, pageout, (unsigned*) outbuf, actWrite, Nothing);
 		}
 		//else since the frame isn't dirty, we don't need to write back to swapQ
 	}
 	// update the frame metadata and the page tables of the involved processes
 	int pagein = (CPU.IRoperand) / pageSize;
 	int pidin = CPU.Pid;
-	insert_swapQ(pidin, pagein, NULL, actRead, sendtoReady);
+	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
 	update_frame_info(frame, CPU.Pid, pagein);
 	update_process_pagetable(CPU.Pid, pagein, frame);
 }
