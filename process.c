@@ -17,6 +17,7 @@ void context_in (int pid)
   CPU.Pid = pid;
   CPU.PC = PCB[pid]->PC;
   CPU.AC = PCB[pid]->AC;
+  CPU.MDbase =PCB[pid]->MDbase;
   CPU.PTptr = PCB[pid]->PTptr;
   CPU.exeStatus = PCB[pid]->exeStatus;
 }
@@ -186,6 +187,7 @@ void dump_PCB (int pid)
   printf ("Pid = %d\n", PCB[pid]->Pid);
   printf ("PC = %d\n", PCB[pid]->PC);
   printf ("AC = "mdOutFormat"\n", PCB[pid]->AC);
+  printf ("MDbase = %d\n", PCB[pid]->MDbase);
   printf ("PTptr = %x\n", PCB[pid]->PTptr);
   printf ("exeStatus = %d\n", PCB[pid]->exeStatus);
 }
@@ -215,10 +217,6 @@ void dump_PCB_memory ()
 #define OPifgo 5
 #define idleMsize 3
 #define idleNinstr 2
-
-// this function initializes the idle process
-// idle process has only 1 instruction, ifgo (2 words) and 1 data
-// the ifgo condition is always true and will always go back to 0
 
 void clean_process (int pid)
 {
@@ -254,6 +252,9 @@ void end_process (int pid)
     // so, io should not access PCB[pid] for end process printing
 }
 
+// this function initializes the idle process
+// idle process has only 1 instruction, ifgo (2 words) and 1 data
+// the ifgo condition is always true and will always go back to 0
 void init_idle_process ()
 { 
   // create and initialize PCB for the idle process
@@ -286,17 +287,19 @@ void initialize_process_manager ()
 
 int submit_process (char *fname)
 { int pid, ret, i;
-
+  // Will change once we are confident everything works before demand paging
   if ( ((numFrames-OSpages)/(numUserProcess+1)) < 2 )
     printf ("\aToo many processes => they may not execute due to page faults\n");
   else
   { pid = new_PCB ();
     if (pid > idlePid)
-    { ret = load_process (pid, fname);   // return #pages loaded
+    { int dataOffset;
+      ret = load_process (pid, fname, &dataOffset);   // return #pages loaded
       if (ret > 0)
       { PCB[pid]->PC = 0;
         PCB[pid]->AC = 0;
         PCB[pid]->exeStatus = eReady;
+        PCB[pid]->MDbase = dataOffset;
         // swap manager will put the process to ready queue
         numUserProcess++;
         return (pid);

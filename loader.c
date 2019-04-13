@@ -52,7 +52,7 @@ int load_data (mType *buf, int page, int offset)
 }
 
 // load program to swap space, returns the #pages loaded
-int load_process_to_swap (int pid, char *fname)
+int load_process_to_swap (int pid, char *fname, int *dataOffset)
 { 
   // read from program file "fname" and call load_instruction & load_data
   // to load the program into the buffer, write the program into
@@ -78,6 +78,8 @@ int load_process_to_swap (int pid, char *fname)
   else { //*for debugging
 	  printf("finished reading parameters\n");
   }
+
+  *dataOffset = numinstr;
 
   //Pages needed needs to check for msize - 1, because if msize is 32, it should still fit on 1 page
   //And I HIGHLY doubt we will get an msize of 0, but may add check later down the line
@@ -105,7 +107,7 @@ int load_process_to_swap (int pid, char *fname)
     insert_swapQ(pid, i, (unsigned *) page, actWrite, freeBuf);
     printf("submitted a page\n");
     loadedPages++;
-    PCB[pid]->PTptr[i] = pendingPage;
+    update_process_pagetable (pid, i, pendingPage)
   }
   fclose(progFd);
   return loadedPages;
@@ -125,12 +127,12 @@ int load_pages_to_memory (int pid, int numpages)
     insert_swapQ(pid, k, NULL, actRead, Nothing); 
 
     // update appropriate page to pending
-	PCB[pid]->PTptr[k] = pendingPage;
+    update_process_pagetable (pid, k, pendingPage)
   }
   if(numpages > 0){
     insert_swapQ(pid, k, NULL, actRead, toReady); 
-    // update appropriate page to pending
-	PCB[pid]->PTptr[k] = pendingPage;
+    // update last page to pending as well
+    update_process_pagetable (pid, k, pendingPage)
   }
 
   // TODO: Let's consider instead of int numpages, loading the 1st page of instructions 
@@ -139,9 +141,9 @@ int load_pages_to_memory (int pid, int numpages)
   return progNormal;
 }
 
-int load_process (int pid, char *fname)
+int load_process (int pid, char *fname, int *dataOffset)
 { int ret;
-  ret = load_process_to_swap (pid, fname);   // return #pages loaded
+  ret = load_process_to_swap (pid, fname, dataOffset);   // return #pages loaded
   //printf("pages loaded to swap %d\n", ret); for debugging
   if (ret != progError) load_pages_to_memory (pid, ret);
   return (ret);

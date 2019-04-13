@@ -12,7 +12,7 @@
 
 mType *Memory;   // The physical memory, size = pageSize*numFrames
 
-typedef unsigned ageType;
+typedef unsigned char ageType;
 typedef struct
 { int pid, page;   // the frame is allocated to process pid for page page
   ageType age;
@@ -30,8 +30,10 @@ int freeFhead, freeFtail;   // the head and tail of free frame list
 
 
 // define values for fields in FrameStruct
-#define zeroAge 0x00000000
-#define highestAge 0x80000000
+#define zeroAge 0x00
+#define highestAge 0x80
+// #define zeroAge 0x00000000 // change ageType back to just unsigned if you want to use these two lines
+// #define highestAge 0x80000000
 #define dirtyFrame 1
 #define cleanFrame 0
 #define freeFrame 1
@@ -111,13 +113,13 @@ int calculate_memory_address (unsigned offset, int rwflag)
       // If it hits this, then we've done something wrong I think
       return -1;
 	  break;
-	default: {
-		int memOffset = frame * pageSize;
-		int pageOffset = offset - pageIndex * pageSize;
-		int address = memOffset + pageOffset;
-		memFrame[frame].dirty = dirtyFrame;
-		return -1;
-	}
+    default: {
+      int memOffset = frame * pageSize;
+      int pageOffset = offset - pageIndex * pageSize;
+      int address = memOffset + pageOffset;
+      memFrame[frame].dirty = dirtyFrame;
+      return -1;
+    }
   }
   //Should not reach this point
   return -7; 
@@ -148,7 +150,7 @@ int put_data (int offset)
   // call calculate_memory_address to get memory address
   // copy MBR to memory 
   // return mNormal, mPFault or mError
-
+  offset += CPU.MDbase;
   int address = calculate_memory_address(offset, flagWrite);
 
   switch(address){
@@ -176,14 +178,13 @@ int get_instruction (int offset)
       return mError;
     case mPFault:
       return mPFault;
-    default:
-	{
-		int instr = Memory[address].mInstr;
-		CPU.IRopcode = instr >> opcodeShift;
-		CPU.IRoperand = instr & operandMask;
-		// dirty bit set in calculate_address since it's easier there than here
-		return mNormal;
-	}
+    default: {
+      int instr = Memory[address].mInstr;
+      CPU.IRopcode = instr >> opcodeShift;
+      CPU.IRoperand = instr & operandMask;
+      // dirty bit set in calculate_address since it's easier there than here
+      return mNormal;
+	  }
   }
 }
 
@@ -211,7 +212,6 @@ void dump_one_frame (int findex) {
   for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
     printf("Memory @ - 0x%032x| Data - 0x%016x\n", i, Memory[i]);
   }
-
 }
 
 void dump_memory ()
@@ -263,6 +263,15 @@ int findex, pid, page;
 
   memFrame[findex].pid = pid;
   memFrame[findex].page = page;
+
+  // we have to update necesarry things if frame is now free
+  // by passing pid=nullPid and (page=nullIndex or page==nullPage), this will "reset" frame
+  if(pid == nullPid && (page == nullIndex || page == nullPage)){
+    memFrame[findex].age = zeroAge;
+    memFrame[findex].dirty = cleanFrame;
+    memFrame[findex].free = freeFrame;
+    memFrame[findex].pinned = nopinFrame;
+  }
 }
 
 // should write dirty frames to disk and remove them from process page table
@@ -271,6 +280,26 @@ int findex, pid, page;
 // so, the process can continue using the page, till actual swap
 void addto_free_frame (int findex, int status)
 {
+  if(status == nullPage){
+    // if nullPage, immediately add to free pages
+    // there is no need to care about properly swapping out
+    // just overwrite the frame info, no loss of important info
+    update_frame_info(findex, nullPid, nullIndex);
+
+    // and don't forget to add to free list
+    if(freeFtail == nullIndex){
+      // if the tail is pointing to nullIndex, there's no head either
+      freeFhead = findex;
+    } else {
+      memFrame[freeFtail].next = findex;
+      memFrame[findex].prev = freeFtail;
+    }
+    freeFtail = findex;
+  } else {
+    // If it gets to this point, I think we have a problem
+    // We should only add to free frames when the status is nullPage
+    printf("ERROR: attempted to add a page to free list while status is not nullPage\n");
+  }
 }
 
 int select_agest_frame ()
@@ -278,6 +307,36 @@ int select_agest_frame ()
   // select a frame with the lowest age 
   // if there are multiple frames with the same lowest age, then choose the one
   // that is not dirty
+
+  // start iterating through, we'll be unfair and choose the first instance 
+  // if there are multiple frames that are of lower age and not dirty
+
+  // Strategy: Perform 2 linear searches, 
+  // First pass, get smallest age as well as count
+  int oldestCleanFrame;
+  unsigned ageOfOldestFrame = highestAge;
+  
+  int frameIndex;
+  FrameStruct frame;
+  int OldestFramesCount = 0;
+  // Start at pid after OS frames
+  for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++){
+    frame = memFrame[frameIndex];
+    //skip the frame if it's pinned
+    if(frame.pinned == nopinFrame){
+      if(frame.age < ageOfOldestFrame && frame.dirty == cleanFrame){
+        ageOfOldestFrame = frame.age;
+        oldestCleanFrame = frameIndex;
+      }
+
+      //if we have a clean old as cray cray frame, then we should stop/break out of search loop
+      if(ageOfOldestFrame == zeroAge){ break; }
+    }
+  }
+
+  for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++)
+
+  return oldestCleanFrame;
 }
 
 // get a free frame from the head of the free list 
@@ -287,9 +346,9 @@ int get_free_frame (){
   int freeFrameIndex;
   // if the there is a head, then there are free pages
   // If freeFhead is 0, then we've done something very wrong somewhere
-  // It should never be 0
+  // It should always be 2 or greater
   // same for next and prev for any Q element
-  if(freeFhead > nullIndex){
+  if(freeFhead != nullIndex){
     freeFrameIndex = freeFhead;
     int next = memFrame[freeFhead].next;
     //if there is no next frame, then tail and head must be set to 0
@@ -303,10 +362,12 @@ int get_free_frame (){
     memFrame[freeFhead].next = nullIndex;
     return freeFrameIndex;
   } else {
-    //we are assuming that a free frame will go immediately to work
-    //so dequeue the frame from list
-    //add age stuff later
-  return -1;
+    // we are assuming that a free frame will need to be used
+    // so dequeue the frame from list
+    
+    // in the case there are no free frames, we'll need to get oldest frame, preferably not dirty
+    
+  return nullIndex;
   }
 } 
 
@@ -332,6 +393,7 @@ void initialize_memory ()
   }
   // initilize the remaining pages, also put them in free list
   // *** ADD CODE
+  // Create pages and set them as free pages
   for(i = OSpages; i<numFrames; i++){
     memFrame[i].age = zeroAge;
     memFrame[i].dirty = cleanFrame;
@@ -367,6 +429,7 @@ void init_process_pagetable (int pid)
 }
 
 // frame can be normal frame number or nullPage, diskPage
+// frame should really be called frametype imo
 void update_process_pagetable (pid, page, frame)
 int pid, page, frame;
 { 
@@ -380,6 +443,23 @@ int free_process_memory (int pid)
 { 
   // free the memory frames for a terminated process
   // some frames may have already been freed, but still in process pagetable
+  int pageIndex, frameIndex;
+  for(pageIndex = 0; pageIndex < maxPpages; pageIndex++){
+    frameIndex = PCB[pid]->PTptr[pageIndex];
+    switch(frameIndex){
+      case nullPage:
+        // don't need to do anything I think
+      case diskPage:
+        // Technically don't need to do anything
+      case pendingPage:
+        // I'm hoping we don't have to deal with this, cuz I don't know how'd we handle this
+        break;
+      default:
+        // update_frame_info(frameIndex, nullPid, nullIndex);
+        addto_free_frame(frameIndex, nullPage);
+        break;
+    }
+  }
 }
 
 void dump_process_pagetable (int pid)
@@ -438,12 +518,31 @@ void page_fault_handler ()
 
 // scan the memory and update the age field of each frame
 void memory_agescan ()
-{ 
+{ int frameIndex;
+  for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++){
+    // if frame is free, don't bother with it
+    // otherwise, we need to shift the bits
+    if(memFrame[frameIndex].free == usedFrame){
+      memFrame[frameIndex].age = memFrame[frameIndex].age >> 1;
+      // Do I need to free the pages if they are too old here?
+      // I have a feeling that I do have to
+      if(memFrame[frameIndex].age == 0){
+        // since frame is old, we'll need to swap it out to swap.disk
+        // free page
+      }
+    }
+  }
 }
+
+void start_periodical_page_scan ()
+{ add_timer (periodAgeScan, osPid, actAgeInterrupt, periodAgeScan);
+}
+
 
 void initialize_memory_manager ()
 { 
   // initialize memory and add page scan event request
   initialize_memory();
+  //start_periodical_page_scan();
 }
 

@@ -105,6 +105,7 @@ struct
   mdType MBR;
   int IRopcode;
   int IRoperand;
+  int MDbase;
   int *PTptr;
   int exeStatus;
   unsigned interruptV;
@@ -149,6 +150,7 @@ typedef struct
   int PC;
   mdType AC;
   int *PTptr;
+  int MDbase;
   int exeStatus;
   int timeUsed;
   int numPF;
