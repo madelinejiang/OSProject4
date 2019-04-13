@@ -239,44 +239,48 @@ void *process_swapQ ()
 		//prepare for the disk action
 		//
 		switch (node->act) {
-		case actRead:
-		{
-		//read from swap space
-			read_swap_page(node->pid, node->page, node->buf);
-		}
-		break;
-		case actWrite: {
-			//write to swap space
-			write_swap_page(node->pid, node->page,node->buf);
-			printf("wrote to swap.disk %d %d %u\n", node->pid, node->page, node->buf);
-		}
+			case actRead:
+			{
+			//read from swap space
+				read_swap_page(node->pid, node->page, node->buf);
+				load_page_toMemory(node->pid,node->page, node->buf);
+			}
 			break;
-		default:
+			case actWrite: {
+				//write to swap space
+				write_swap_page(node->pid, node->page,node->buf);
+				printf("wrote to swap.disk %d %d %u\n", node->pid, node->page, node->buf);
+			}
+			break;
+			default:
 			break;
 		}
+
+//================================================//
+
 		switch (node->finishact) {
-		case Nothing:
-			break;
-		case freeBuf:
-			if (node->act==actRead) {
-				//should only occur for write not read
-				printf("Attempt to free buffer during read\n");
-			}
-			else {
+			case Nothing:
+				break;
+			case freeBuf:
+				if (node->act==actRead) {
+					//should only occur for write not read
+					printf("Attempt to free buffer during read\n");
+				}
+				else {
+					node->buf = NULL;
+				}
+				break;
+			case toReady:
+				insert_endWait_process(node->pid);
+				set_interrupt(endWaitInterrupt);
+				break;
+			case Both:
 				node->buf = NULL;
-			}
-			break;
-		case toReady:
-			insert_endWait_process(node->pid);
-			set_interrupt(endWaitInterrupt);
-			break;
-		case Both:
-			node->buf = NULL;
-			insert_endWait_process(node->pid);
-			set_interrupt(endWaitInterrupt);
-			break;
-		default:
-			break;
+				insert_endWait_process(node->pid);
+				set_interrupt(endWaitInterrupt);
+				break;
+			default:
+				break;
 
 		}
 		free(node);

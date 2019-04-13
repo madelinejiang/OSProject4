@@ -22,13 +22,17 @@ void context_in (int pid)
   CPU.exeStatus = PCB[pid]->exeStatus;
 }
 
-void context_out (int pid, int intime)
+// intime: amount of time inside CPU
+// pageFault, 1 if there was one, 0 if not
+void context_out (int pid, int intime, int pageFault)
 {  
   // *** ADD CODE to switch out the context from CPU to PCB
   PCB[pid]->PC = CPU.PC;
   PCB[pid]->AC = CPU.AC;
   PCB[pid]->PTptr = CPU.PTptr;
   PCB[pid]->exeStatus = CPU.exeStatus;
+  PCB[pid]->timeUsed = PCB[pid]->timeUsed + intime;
+  PCB[pid]->numPF = PCB[pid]->numPF + pageFault;
 }
 
 //=========================================================================
@@ -217,6 +221,8 @@ void dump_PCB_memory ()
 #define OPifgo 5
 #define idleMsize 3
 #define idleNinstr 2
+#define Pfault 1
+#define noPfault 0
 
 void clean_process (int pid)
 {
@@ -323,10 +329,19 @@ void execute_process ()
   { 
     // *** ADD CODE to perform context switch and call cpu_execution
     // also add code to keep track of accounting info: timeUsed & numPF
-
-    if (CPU.exeStatus == eReady) insert_ready_process (pid);
-    else if (CPU.exeStatus == ePFault || CPU.exeStatus == eWait) 
+    context_in(pid);
+    CPU.exeStatus = eRun;
+    event = add_timer (cpuQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
+    cpu_execution ();
+    
+    if (CPU.exeStatus == eReady){
+      context_out(pid, event.timeUsed, noPfault);
+      insert_ready_process (pid);
+    }
+    else if (CPU.exeStatus == ePFault || CPU.exeStatus == eWait) {
+      context_out(pid, event.timeUsed, Pfault);
       deactivate_timer (event);
+    }
     else // CPU.exeStatus == eError or eEnd
       { end_process (pid); deactivate_timer (event); }
     // ePFault and eWait has to be handled differently
@@ -346,7 +361,7 @@ void execute_process ()
        // only time quantum will stop idle process, and shoud use idleQuantum
   { context_in (idlePid);
     CPU.exeStatus = eRun;
-    add_timer (idleQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
+    event = add_timer (idleQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
     cpu_execution (); 
   }
 }
