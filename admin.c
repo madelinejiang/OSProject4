@@ -36,8 +36,8 @@ void process_admin_command ()
       case 'm':   // dump memory of each process
         dump_PCB_memory (); break;
       case 'f':   // dump memory frames and free frame list
-        //dump_memoryframe_info ();
-		printf("endless loop until you implement free list\n");
+        dump_memoryframe_info ();
+		    dump_free_list();
 		break;
       case 'n':   // dump the content of the entire memory
         dump_memory (); break;
@@ -47,7 +47,7 @@ void process_admin_command ()
         dump_termio_queue (); break;
       case 'w':   // dump swap queue
         dump_swapQ (); break;
-	  case 'd':
+	    case 'd':
 		  dump_swap(); break;//dump swap.disk
       case 'T':  // Terminate, do nothing, terminate in while loop
         systemActive = 0; break;

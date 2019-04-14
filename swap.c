@@ -202,6 +202,10 @@ int pid, page, act, finishact;
 unsigned *buf;
 {   sem_wait(&swapq_mutex);
   SwapQnode *node = (SwapQnode *) malloc(sizeof(SwapQnode));
+  
+  if(buf == NULL){
+    buf = malloc(sizeof(unsigned *) * pagedataSize);
+  }
 
   node->pid = pid;
   node->page = page;
@@ -219,7 +223,7 @@ unsigned *buf;
   swapQtail->next = NULL;
   sem_post(&swap_semaq);
 
-  printf("finished inserting one item into swapQ\n");//debugging
+  printf("finished inserting one item into swapQ: %d, %d\n", pid, page);//debugging
 
   sem_post(&swapq_mutex);
 }
@@ -228,32 +232,33 @@ void *process_swapQ ()
 {
   // called as the entry function for the swap thread
   //wait for something in the queue before proceeding
+
 	while (systemActive) {
 		sem_wait(&swap_semaq);
 		sem_wait(&swapq_mutex);
 		//<critical section>
 		//dequeue
+    printf("HELLO!\n");
 		SwapQnode *node = swapQhead;
 		swapQhead = node->next;
 
 		//prepare for the disk action
 		//
 		switch (node->act) {
-			case actRead:
-			{
-			//read from swap space
-				read_swap_page(node->pid, node->page, node->buf);
-				load_page_toMemory(node->pid,node->page, node->buf);
-			}
-			break;
+			case actRead: { printf("freeFhead @ process_swap(): %d\n", getffhead());
+        //read from swap space
+          read_swap_page(node->pid, node->page, node->buf);
+          load_page_to_memory(node->pid,node->page, node->buf);
+        }
+        break;
 			case actWrite: {
 				//write to swap space
 				write_swap_page(node->pid, node->page,node->buf);
 				printf("wrote to swap.disk %d %d %u\n", node->pid, node->page, node->buf);
-			}
-			break;
+        }
+        break;
 			default:
-			break;
+			  break;
 		}
 
 //================================================//
@@ -264,20 +269,25 @@ void *process_swapQ ()
 			case freeBuf:
 				if (node->act==actRead) {
 					//should only occur for write not read
-					printf("Attempt to free buffer during read\n");
+					printf("ERROR: Attempt to free buffer during read\n");
 				}
 				else {
-					node->buf = NULL;
+					free(node->buf);
 				}
 				break;
 			case toReady:
-				insert_endWait_process(node->pid);
-				set_interrupt(endWaitInterrupt);
+        if(node->act == actRead){printf("freeFhead @ process_swap(): %d\n", getffhead());
+          printf("sending to readyQ\n");
+          insert_ready_process(node->pid);
+          printf("sent to readyQ\n");
+          printf("I supposedly put it in the readyQ\n");
+        } else {
+          printf("ERROR: Cannot place a process to ReadyQ on actWrite\n");
+        }
 				break;
 			case Both:
-				node->buf = NULL;
-				insert_endWait_process(node->pid);
-				set_interrupt(endWaitInterrupt);
+				free(node->buf);
+				insert_ready_process(node->pid);
 				break;
 			default:
 				break;
@@ -287,7 +297,6 @@ void *process_swapQ ()
 		node = NULL;
 		sem_post(&swapq_mutex);
 	}
-
 }
 
 void start_swap_manager ()

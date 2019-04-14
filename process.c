@@ -57,7 +57,7 @@ ReadyNode *readyTail = NULL;
 void insert_ready_process (pid)
 int pid;
 { ReadyNode *node;
-
+    printf("inserting into readyQ\n");
   node = (ReadyNode *) malloc (sizeof (ReadyNode));
   node->pid = pid;
   node->next = NULL;
@@ -65,6 +65,7 @@ int pid;
     { readyTail = node; readyHead = node; }
   else // insert to tail
     { readyTail->next = node; readyTail = node; }
+    printf("inserted into readyQ\n");
 }
 
 int get_ready_process ()
@@ -301,16 +302,19 @@ int submit_process (char *fname)
     if (pid > idlePid)
     { int dataOffset;
       ret = load_process (pid, fname, &dataOffset);   // return #pages loaded
+      printf("freeFhead @ submit_process(): %d\n", getffhead());
       if (ret > 0)
       { PCB[pid]->PC = 0;
         PCB[pid]->AC = 0;
         PCB[pid]->exeStatus = eReady;
         PCB[pid]->MDbase = dataOffset;
+        printf("Data offset for %s is %d. Got %d pages loaded into swapQ\n", fname, dataOffset, ret);
+        printf("freefhead @ submit_process: %d\n", getffhead());
         // swap manager will put the process to ready queue
         numUserProcess++;
         return (pid);
-      }
-      else free_PCB (pid);   // cannot clean_process(), no page table
+      } else clean_process(pid);
+      //else free_PCB (pid);   // cannot clean_process(), no page table
   } }
   // abnormal situation, PCB has not been allocated or has been freed
   char *str = (char *) malloc (80);
@@ -323,23 +327,24 @@ int submit_process (char *fname)
 void execute_process ()
 { int pid, intime;
   genericPtr event;
-
+  
   pid = get_ready_process ();
   if (pid != nullReady)
   { 
     // *** ADD CODE to perform context switch and call cpu_execution
     // also add code to keep track of accounting info: timeUsed & numPF
     context_in(pid);
+    intime = CPU.numCycles;
     CPU.exeStatus = eRun;
     event = add_timer (cpuQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
     cpu_execution ();
-    
+    intime = CPU.numCycles - intime;
     if (CPU.exeStatus == eReady){
-      context_out(pid, event.timeUsed, noPfault);
+      context_out(pid, intime, noPfault);
       insert_ready_process (pid);
     }
     else if (CPU.exeStatus == ePFault || CPU.exeStatus == eWait) {
-      context_out(pid, event.timeUsed, Pfault);
+      context_out(pid, intime, Pfault);
       deactivate_timer (event);
     }
     else // CPU.exeStatus == eError or eEnd

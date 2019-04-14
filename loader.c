@@ -90,15 +90,17 @@ int load_process_to_swap (int pid, char *fname, int *dataOffset)
   int loadedPages = 0;//keep track of successfully loaded pages. in the future could have error checking with malloc
   printf("msize is %d. pageSize is %d. Need %d pages\n", msize, pageSize, pagesNeeded);
   int line = 0;
-  printf("%d\n", pagesNeeded);
   for(i = 0; i < pagesNeeded; i++){
-	  printf("value of line is %d\n", line);
     mType *page = (mType *) malloc (pageSize*sizeof(mType));
     for(j=0; j < pageSize; j++){
       if(line < msize){
         if(line < numinstr){
+          printf("value of line %d is an instruction\n", line);
           load_instruction(page, i, j);
-        } else { load_data(page, i, j);}
+        } else {
+          printf("value of line %d is an data\n", line);
+          load_data(page, i, j);
+        }
 		    line++;
       }  else {
         break;
@@ -107,7 +109,7 @@ int load_process_to_swap (int pid, char *fname, int *dataOffset)
     insert_swapQ(pid, i, (unsigned *) page, actWrite, freeBuf);
     printf("submitted a page\n");
     loadedPages++;
-	update_process_pagetable(pid, i, pendingPage);
+	  update_process_pagetable(pid, i, pendingPage);
   }
   fclose(progFd);
   return loadedPages;
@@ -124,21 +126,20 @@ int load_pages_to_memory (int pid, int numpages)
   for(k = 0; k < numpages-1; k++){
     // NULL is passed for buf, since swap will have to take care of the loading into memory
     // if I am to understand her code better
+    update_process_pagetable(pid, k, pendingPage);
     insert_swapQ(pid, k, NULL, actRead, Nothing); 
-
     // update appropriate page to pending
-	  update_process_pagetable(pid, k, pendingPage);
   }
+
   if(numpages > 0){
-    insert_swapQ(pid, k, NULL, actRead, toReady); 
     // update last page to pending as well
     update_process_pagetable(pid, k, pendingPage);
+    insert_swapQ(pid, k, NULL, actRead, toReady); 
   }
 
   // TODO: Let's consider instead of int numpages, loading the 1st page of instructions 
   // and 1st page of data, just a thought.
   //finding the first page of instructions is easy. finding the first page of data is not
-
   
   return progNormal;
 }
@@ -146,9 +147,11 @@ int load_pages_to_memory (int pid, int numpages)
 int load_process (int pid, char *fname, int *dataOffset)
 { int ret;
   ret = load_process_to_swap (pid, fname, dataOffset);   // return #pages loaded
-  //printf("pages loaded to swap %d\n", ret); for debugging
+  if(Debug){
+    printf("%d pages inserted in swapQ\n", ret);
+  }
   if (ret != progError) load_pages_to_memory (pid, ret);
-  return (ret);
+  return ret;
 }
 
 // load idle process, idle process uses OS memory

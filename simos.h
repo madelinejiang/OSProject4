@@ -72,6 +72,7 @@ void initialize_memory_manager ();  // called by system.c
 void dump_process_memory (int pid);
 void dump_process_pagetable (int pid);
 void dump_memoryframe_info ();
+void dump_free_list();
 void dump_memory ();
 
 // memory management functions
@@ -89,7 +90,7 @@ void update_frame_info (int findex, int pid, int page);
 void direct_put_instruction (int findex, int offset, int instr);
 void direct_put_data (int findex, int offset, mdType data);
 int get_free_frame ();
-void load_page_toMemory(int pid, int page, (unsigned*)buf);
+int load_page_to_memory(int pid, int page, unsigned *buf);
 
 // by cpu.c
 void page_fault_handler ();
@@ -189,6 +190,7 @@ void dump_endWait_list ();
 void initialize_process ();  // called by system.c
 int submit_process (char* fname);  // called by submit.c
 void execute_process ();  // called by admin.c
+void insert_ready_process(); //called by loader when loading fresh programs, and probably 
 
 
 //=============== swap.c related definitions ====================

@@ -22,6 +22,9 @@ typedef struct
 
 FrameStruct *memFrame;   // memFrame[numFrames]
 int freeFhead, freeFtail;   // the head and tail of free frame list
+int getffhead(){
+  return freeFhead;
+}
 
 // define special values for page/frame number
 #define nullIndex -1   // free frame list null pointer
@@ -84,7 +87,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
   if(offset == 0){
     pageIndex = 0;
   } else {
-    pageIndex = (offset) / pageSize + 1;
+    pageIndex = (offset) / pageSize ;
   }
   
   if(pageIndex >= maxPpages){
@@ -228,11 +231,12 @@ void dump_free_list ()
 { int i = freeFhead;
 
   printf ("******************** Free Frame List\n");
-  
+
   while(i > nullIndex){ //currently gives an endless loop MJ
-    printf ("Free Frame %d: ", i);
+    printf ("Free Frame %d->", i);
     i = memFrame[i].next;
   }
+  printf("||\n");
 }
 
 void print_one_frameinfo (int indx)
@@ -348,6 +352,7 @@ int get_free_frame (){
   // If freeFhead is 0, then we've done something very wrong somewhere
   // It should always be 2 or greater
   // same for next and prev for any Q element
+  printf("freeFhead: %d\n", freeFhead);
   if(freeFhead != nullIndex){
     freeFrameIndex = freeFhead;
     int next = memFrame[freeFhead].next;
@@ -371,6 +376,60 @@ int get_free_frame (){
   }
 } 
 
+// this determines whether a page is all data, all instr, or a mix
+// mainly to help make sense of load_page_to_memory()
+#define pData 1
+#define pInstr 2
+#define pMix 4
+
+int load_page_to_memory(int pid, int page, unsigned *buf){
+  int frame = get_free_frame();
+  if(frame == nullIndex){
+    printf("ERROR: cannot get free frame @ load_page_to_memory\n.");
+    return mError;
+  }
+
+  //Calculate page and word offset of data start
+  int dataPageIndex = PCB[pid]->MDbase / pageSize;
+  int type = page - dataPageIndex;
+  int dataOffset = 0; // the offset from start of page where data starts, only needed for pMix
+  if(type > 0){
+    type = pData;
+  } else if(type < 0){
+    type = pInstr;
+  } else {
+    // page == dataPageIndex
+    type = pMix;
+  }
+
+  int j = 0;
+  for (int i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
+    switch(type){
+      case pData:
+        Memory[i].mData = (mdType)buf[j];
+        break;
+      case pInstr:
+        Memory[i].mInstr = (int)buf[j];
+        break;
+      case pMix:
+        if(j < PCB[pid]->MDbase){
+          Memory[i].mInstr = (int)buf[j];
+        } else {
+          Memory[i].mData = (mdType)buf[j];
+        }
+        break;
+      default:
+        printf("ERROR: unable to load page to memory @ load_page_to_memory()\n");
+        break;
+    }
+  }
+
+  PCB[pid]->PTptr[page] = frame;
+  free(buf);
+  printf("PCB[%d]->PTptr[%d] = %d", pid, page, PCB[pid]->PTptr[page]);
+  return 0;
+}
+
 void initialize_memory ()
 { int i;
 
@@ -390,6 +449,8 @@ void initialize_memory ()
     memFrame[i].free = usedFrame;
     memFrame[i].pinned = pinnedFrame;
     memFrame[i].pid = osPid;
+    memFrame[i].next = nullIndex;
+    memFrame[i].prev = nullIndex;
   }
   // initilize the remaining pages, also put them in free list
   // *** ADD CODE
@@ -399,22 +460,26 @@ void initialize_memory ()
     memFrame[i].dirty = cleanFrame;
     memFrame[i].free = freeFrame;
     memFrame[i].pinned = nopinFrame;
+    memFrame[i].next = nullIndex;
+    memFrame[i].prev = nullIndex;
   }
 
-  //Create the next free frame for all but the last frame
+  // Create the next free frame for all but the last frame
   for(i = OSpages; i<numFrames-1; i++){
     memFrame[i].next = i+1;
   }
 
-  //Create the prev free frame for all but the first free frame
+  // Create the prev free frame for all but the first free frame
   for(i = numFrames - 1; i > OSpages; i--){
     memFrame[i].prev = i-1;
   }
 
-  //First free frame is at OSpages, last is at numFrames-1
+  // First free frame is at OSpages, last is at numFrames-1
   freeFhead = OSpages;
   freeFtail = numFrames - 1;
 
+  printf("freeFhead after init is %d\n", freeFhead);
+  printf("freeFtail after init is %d\n", freeFtail);
 }
 
 //==========================================
@@ -424,7 +489,7 @@ void initialize_memory ()
 void init_process_pagetable (int pid)
 { int i;
 
-  PCB[pid]->PTptr = (int *) malloc (addrSize*maxPpages);
+  PCB[pid]->PTptr = (int *) malloc (sizeof(int)*maxPpages);
   for (i=0; i<maxPpages; i++) PCB[pid]->PTptr[i] = nullPage;
 }
 
