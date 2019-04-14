@@ -406,9 +406,11 @@ int load_page_to_memory(int pid, int page, unsigned *buf){
     switch(type){
       case pData:
         Memory[i].mData = (mdType)buf[j];
+		printf("buffer contents in load_page_to_memory %x\n", buf[j]);
         break;
       case pInstr:
         Memory[i].mInstr = (int)buf[j];
+		printf("buffer contents in load_page_to_memory %x\n", buf[j]);
         break;
       case pMix:
         if(j < PCB[pid]->MDbase){

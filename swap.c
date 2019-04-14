@@ -40,7 +40,6 @@ int read_swap_page (int pid, int page, unsigned *buf)
 { 
   // reference the previous code for this part
   // but previous code was not fully completed
-  buf = (unsigned*)malloc(sizeof(unsigned*)*pagedataSize);
   if (pid < 2 || pid > maxProcess) 
   { printf ("Error: Incorrect pid for disk read: %d\n", pid); 
     return (-1);
@@ -258,12 +257,12 @@ void *process_swapQ ()
         //read from swap space
           read_swap_page(node->pid, node->page, node->buf);
 		  printf("from swap.c loading to memory pid:%d page:%d buf:%x\n", node->pid, node->page, node->buf);
-		 /* {
+		  {
 			  printf("Contents of page are: \n");
 			  for (int j = 0; j < pageSize; j++) {
 				  printf("Contents of pagebuf with offset %d is %x\n", j, node->buf[j]);
 			  }
-		  }*/
+		  }
 		  load_page_to_memory(node->pid,node->page, node->buf);
         }
         break;
