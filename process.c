@@ -17,7 +17,7 @@ void context_in (int pid)
   CPU.Pid = pid;
   CPU.PC = PCB[pid]->PC;
   CPU.AC = PCB[pid]->AC;
-  CPU.MDbase =PCB[pid]->MDbase;
+  CPU.MDbase = PCB[pid]->MDbase;
   CPU.PTptr = PCB[pid]->PTptr;
   CPU.exeStatus = PCB[pid]->exeStatus;
 }
@@ -301,13 +301,13 @@ int submit_process (char *fname)
   { pid = new_PCB ();
     if (pid > idlePid)
     { int dataOffset;
-      ret = load_process (pid, fname, &dataOffset);   // return #pages loaded
+      ret = load_process (pid, fname);   // return #pages loaded
       if (ret > 0)
       { PCB[pid]->PC = 0;
         PCB[pid]->AC = 0;
         PCB[pid]->exeStatus = eReady;
-        PCB[pid]->MDbase = dataOffset;
         printf("Data offset for %s is %d. Got %d pages loaded into swapQ\n", fname, dataOffset, ret);
+        printf("PCB[pid]->MDbase = %d\n", PCB[pid]->MDbase);
         // swap manager will put the process to ready queue
         numUserProcess++;
         return (pid);

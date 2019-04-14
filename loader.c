@@ -31,6 +31,7 @@ int load_instruction (mType *buf, int page, int offset){
   opcode = opcode << opcodeShift;
   operand = operand & operandMask;
   buf[offset].mInstr = opcode | operand;
+  printf("Load instruction: 0x%08x\n", buf[offset]);
   return (progNormal);
 }
 
@@ -48,6 +49,7 @@ int load_data (mType *buf, int page, int offset)
     ("Loading data: %d\n", data); 
   }
   buf[offset].mData = data;
+  printf("Load instruction: %f\n", buf[offset]);
   return (progNormal);
 }
 
@@ -106,7 +108,7 @@ int load_process_to_swap (int pid, char *fname, int *dataOffset)
         break;
       }
     }
-    insert_swapQ(pid, i, (unsigned *) page, actWrite, freeBuf);
+    insert_swapQ(pid, i, page, actWrite, freeBuf);
     printf("submitted a page\n");
     loadedPages++;
 	  update_process_pagetable(pid, i, pendingPage);
@@ -144,9 +146,11 @@ int load_pages_to_memory (int pid, int numpages)
   return progNormal;
 }
 
-int load_process (int pid, char *fname, int *dataOffset)
+int load_process (int pid, char *fname)
 { int ret;
-  ret = load_process_to_swap (pid, fname, dataOffset);   // return #pages loaded
+  int dataOffset;
+  ret = load_process_to_swap (pid, fname, &dataOffset);   // return #pages loaded
+  PCB[pid]->MDbase = dataOffset;
   if(Debug){
     printf("%d pages inserted in swapQ\n", ret);
   }

@@ -36,11 +36,11 @@ pthread_t swapQThread;
 // OS frequently (like Linux) runs on physical memory address (fixed locations)
 // virtual memory is too expensive and unnecessary for OS => no swap needed
 
-int read_swap_page (int pid, int page, unsigned *buf)
+int read_swap_page (int pid, int page, mType *buf)
 { 
   // reference the previous code for this part
   // but previous code was not fully completed
-  buf = (unsigned*)malloc(sizeof(unsigned*)*pagedataSize);
+  buf = (mType*)malloc(sizeof(mType)*pageSize);
   if (pid < 2 || pid > maxProcess) 
   { printf ("Error: Incorrect pid for disk read: %d\n", pid); 
     return (-1);
@@ -61,7 +61,7 @@ int read_swap_page (int pid, int page, unsigned *buf)
   return 0;
 }
 
-int write_swap_page (int pid, int page, unsigned *buf)
+int write_swap_page (int pid, int page, mType *buf)
 { 
   // reference the previous code for this part
   // but previous code was not fully completed
@@ -73,6 +73,7 @@ int write_swap_page (int pid, int page, unsigned *buf)
   int ret = lseek (diskfd, location, SEEK_SET);
   if (ret < 0) perror ("Error lseek in write: \n");
   int retsize = write (diskfd, buf, pagedataSize);
+  printf("wrote %d bytes\n", retsize);
   if (retsize != pagedataSize) 
     { printf ("Error: Disk write returned incorrect size: %d\n", retsize); 
       exit(-1);
@@ -127,7 +128,7 @@ void dump_swap() {
 // open the file with the swap space size, initialize content to 0
 void initialize_swap_space ()
 { int ret, i, j, k;
-  int buf[pageSize];
+  mType buf[pageSize];
 
   swapspaceSize = maxProcess*maxPpages*pageSize*dataSize;
   PswapSize = maxPpages*pageSize*dataSize;
@@ -139,7 +140,7 @@ void initialize_swap_space ()
   if (ret < 0) { perror ("Error lseek in open: "); exit (-1); }
   for (i=2; i<maxProcess; i++)
     for (j=0; j<maxPpages; j++)
-    { for (k=0; k<pageSize; k++) buf[k]=0;
+    { for (k=0; k<pageSize; k++) buf[k].mInstr=0;
       write_swap_page (i, j, buf);
     }
     // last parameter is the origin, offset from the origin, which can be:
@@ -163,7 +164,7 @@ void initialize_swap_space ()
 
 typedef struct SwapQnodeStruct
 { int pid, page, act, finishact;
-  unsigned *buf;
+  mType *buf;
   struct SwapQnodeStruct *next;
 } SwapQnode;
 // pidin, pagein, inbuf: for the page with PF, needs to be brought in
@@ -199,12 +200,12 @@ void dump_swapQ ()
 // toReady (send pid back to ready queue), freeBuf: free buf, Both, Nothing
 void insert_swapQ (pid, page, buf, act, finishact)
 int pid, page, act, finishact;
-unsigned *buf;
-{   sem_wait(&swapq_mutex);
+mType *buf;
+{ sem_wait(&swapq_mutex);
   SwapQnode *node = (SwapQnode *) malloc(sizeof(SwapQnode));
   
   if(buf == NULL){
-    buf = malloc(sizeof(unsigned *) * pagedataSize);
+    buf = malloc(sizeof(mType) * pagedataSize);
   }
 
   node->pid = pid;
@@ -238,7 +239,6 @@ void *process_swapQ ()
 		sem_wait(&swapq_mutex);
 		//<critical section>
 		//dequeue
-    printf("HELLO!\n");
 		SwapQnode *node = swapQhead;
 		swapQhead = node->next;
 
@@ -277,10 +277,7 @@ void *process_swapQ ()
 				break;
 			case toReady:
         if(node->act == actRead){
-          printf("sending to readyQ\n");
           insert_ready_process(node->pid);
-          printf("sent to readyQ\n");
-          printf("I supposedly put it in the readyQ\n");
         } else {
           printf("ERROR: Cannot place a process to ReadyQ on actWrite\n");
         }

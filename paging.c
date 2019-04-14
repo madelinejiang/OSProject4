@@ -381,8 +381,9 @@ int get_free_frame (){
 #define pInstr 2
 #define pMix 4
 
-int load_page_to_memory(int pid, int page, unsigned *buf){
+int load_page_to_memory(int pid, int page, mType *buf){
   int frame = get_free_frame();
+  printf("free frame received: %d\n", frame);
   if(frame == nullIndex){
     printf("ERROR: cannot get free frame @ load_page_to_memory\n.");
     return mError;
@@ -390,6 +391,7 @@ int load_page_to_memory(int pid, int page, unsigned *buf){
 
   //Calculate page and word offset of data start
   int dataPageIndex = PCB[pid]->MDbase / pageSize;
+  printf("mdmbase = %d | dataPageIndex %d\n", PCB[pid]->MDbase, dataPageIndex);
   int type = page - dataPageIndex;
   int dataOffset = 0; // the offset from start of page where data starts, only needed for pMix
   if(type > 0){
@@ -405,27 +407,31 @@ int load_page_to_memory(int pid, int page, unsigned *buf){
   for (int i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
     switch(type){
       case pData:
-        Memory[i].mData = (mdType)buf[j];
+        Memory[i].mData = buf[j].mData;
+        printf("@%d - %f\n", i, buf[j].mData);
         break;
       case pInstr:
-        Memory[i].mInstr = (int)buf[j];
+        Memory[i].mInstr = buf[j].mInstr;
+        printf("@%d - %d\n", i, buf[j].mInstr);
         break;
       case pMix:
         if(j < PCB[pid]->MDbase){
-          Memory[i].mInstr = (int)buf[j];
+          Memory[i].mInstr = buf[j].mInstr;
+          printf("@%d - %d\n", i, buf[j].mInstr);
         } else {
-          Memory[i].mData = (mdType)buf[j];
+          Memory[i].mData = buf[j].mData;
+          printf("@%d - %f\n", i, buf[j].mData);
         }
         break;
       default:
         printf("ERROR: unable to load page to memory @ load_page_to_memory()\n");
         break;
     }
+    j++;
   }
 
   PCB[pid]->PTptr[page] = frame;
   free(buf);
-  printf("PCB[%d]->PTptr[%d] = %d", pid, page, PCB[pid]->PTptr[page]);
   return 0;
 }
 
@@ -591,15 +597,14 @@ void page_fault_handler ()
 				outbuf[j] = Memory[i];
 				j++;
 			}
-			insert_swapQ(pidout, pageout, (unsigned*) outbuf, actWrite, Nothing);
+			insert_swapQ(pidout, pageout, outbuf, actWrite, Nothing);
 		}
 		//else since the frame isn't dirty, we don't need to write back to swapQ
 	}
 	// update the frame metadata and the page tables of the involved processes
 	int pagein = (CPU.IRoperand) / pageSize;
 	int pidin = CPU.Pid;
-  mType inbuf[pageSize];
-	insert_swapQ(pidin, pagein, (unsigned*) inbuf, actRead, toReady);
+	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
 	update_frame_info(frame, CPU.Pid, pagein);
 	update_process_pagetable(CPU.Pid, pagein, frame);
 }
