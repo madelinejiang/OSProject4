@@ -90,6 +90,7 @@ void update_frame_info (int findex, int pid, int page);
 void direct_put_instruction (int findex, int offset, int instr);
 void direct_put_data (int findex, int offset, mdType data);
 int get_free_frame ();
+int getffhead();//debugging
 int load_page_to_memory(int pid, int page, unsigned *buf);
 
 // by cpu.c

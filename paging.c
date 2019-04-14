@@ -213,7 +213,7 @@ void dump_one_frame (int findex) {
   printf("************ Dump contents of frame %d\n", findex);
   
   for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
-    printf("Memory @ - 0x%032x| Data - 0x%016x\n", i, Memory[i]);
+    printf("Memory @ - 0x%08x| Data - 0x%08x\n", i, Memory[i]);
   }
 }
 
@@ -421,6 +421,7 @@ int load_page_to_memory(int pid, int page, unsigned *buf){
         printf("ERROR: unable to load page to memory @ load_page_to_memory()\n");
         break;
     }
+	j++;
   }
 
   PCB[pid]->PTptr[page] = frame;

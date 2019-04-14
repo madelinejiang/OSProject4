@@ -26,11 +26,12 @@ int load_instruction (mType *buf, int page, int offset){
   }
 
   if(Debug) {
-    ("Loading instruction: %d, %d\n", opcode, operand); 
+    printf("Loading instruction: %d, %d\n", opcode, operand); 
   }
   opcode = opcode << opcodeShift;
   operand = operand & operandMask;
   buf[offset].mInstr = opcode | operand;
+  //printf("buf[offset].mInstr contains %x\n", buf[offset].mInstr); //for debugging
   return (progNormal);
 }
 
@@ -45,7 +46,7 @@ int load_data (mType *buf, int page, int offset)
   }
 
   if(Debug) {
-    ("Loading data: %d\n", data); 
+    printf("Loading data: %d\n", data); 
   }
   buf[offset].mData = data;
   return (progNormal);
@@ -106,6 +107,7 @@ int load_process_to_swap (int pid, char *fname, int *dataOffset)
         break;
       }
     }
+
     insert_swapQ(pid, i, (unsigned *) page, actWrite, freeBuf);
     printf("submitted a page\n");
     loadedPages++;

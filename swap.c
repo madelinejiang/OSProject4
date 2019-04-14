@@ -61,22 +61,25 @@ int read_swap_page (int pid, int page, unsigned *buf)
   return 0;
 }
 
-int write_swap_page (int pid, int page, unsigned *buf)
-{ 
-  // reference the previous code for this part
-  // but previous code was not fully completed
-  if (pid < 2 || pid > maxProcess) 
-  { printf ("Error: Incorrect pid for disk write: %d\n", pid); 
-    return (-1);
-  }
-  int location = (pid-2) * PswapSize + page*pagedataSize;
-  int ret = lseek (diskfd, location, SEEK_SET);
-  if (ret < 0) perror ("Error lseek in write: \n");
-  int retsize = write (diskfd, buf, pagedataSize);
-  if (retsize != pagedataSize) 
-    { printf ("Error: Disk write returned incorrect size: %d\n", retsize); 
-      exit(-1);
-    }
+int write_swap_page(int pid, int page, unsigned *buf)
+{
+	// reference the previous code for this part
+	// but previous code was not fully completed
+	if (pid < 2 || pid > maxProcess)
+	{
+		printf("Error: Incorrect pid for disk write: %d\n", pid);
+		return (-1);
+	}
+	int location = (pid - 2) * PswapSize + page * pagedataSize;
+	int ret = lseek(diskfd, location, SEEK_SET);
+	if (ret < 0) perror("Error lseek in write: \n");
+	
+	int retsize = write (diskfd, buf, pagedataSize);
+	if (retsize != pagedataSize)
+	  { printf ("Error: Disk write returned incorrect size: %d\n", retsize);
+		exit(-1);
+	  }
+
   usleep (diskRWtime);
 
   //we should return something better than just 0
@@ -95,15 +98,15 @@ int dump_process_swap_page (int pid, int page)
   int ret = lseek (diskfd, location, SEEK_SET);
   //printf ("loc %d %d %d, size %d\n", pid, page, location, pagedataSize);
   if (ret < 0) perror ("Error lseek in dump: \n");
-  char *buf = (char *) malloc(pagedataSize);
+  int *buf = (int *) malloc(pagedataSize);
   int retsize = read (diskfd, buf, pagedataSize);
   if (retsize != pagedataSize) 
   { printf ("Error: Disk dump read incorrect size: %d\n", retsize); 
     exit(-1);
   }
-  printf ("Content of process %d page %d:\n", pid, page);
+  printf ("Content of process in dump %d page %d:\n", pid, page);
   int k;
-  for (k=0; k<pageSize; k++) printf ("%d ", buf[k]);
+  for (k=0; k<pageSize; k++) printf ("%x ", buf[k]);
   printf ("\n");
 
   //we should return something better than just 0
@@ -206,12 +209,18 @@ unsigned *buf;
   if(buf == NULL){
     buf = malloc(sizeof(unsigned *) * pagedataSize);
   }
+  /*else {
+	  printf("Contents of page are: \n");
+	  for (int j = 0; j < pageSize; j++) {
+		  printf("Contents of pagebuf with offset %d is %x\n", j, buf[j]);
+	  }
+  }*/
 
   node->pid = pid;
   node->page = page;
   node->act = act;
   node->finishact = finishact;
-  node->buf = buf;
+  node->buf = buf;//address of the page
   ////MJ
   if (swapQhead == NULL) { //empty swapQ so make it the head
 	  swapQhead = node;
@@ -248,13 +257,21 @@ void *process_swapQ ()
 			case actRead: { 
         //read from swap space
           read_swap_page(node->pid, node->page, node->buf);
-          load_page_to_memory(node->pid,node->page, node->buf);
+		  printf("from swap.c loading to memory pid:%d page:%d buf:%x\n", node->pid, node->page, node->buf);
+		 /* {
+			  printf("Contents of page are: \n");
+			  for (int j = 0; j < pageSize; j++) {
+				  printf("Contents of pagebuf with offset %d is %x\n", j, node->buf[j]);
+			  }
+		  }*/
+		  load_page_to_memory(node->pid,node->page, node->buf);
         }
         break;
 			case actWrite: {
 				//write to swap space
 				write_swap_page(node->pid, node->page,node->buf);
-				printf("wrote to swap.disk %d %d %u\n", node->pid, node->page, node->buf);
+
+				printf("wrote to swap.disk %d %d %u(address of buf)\n", node->pid, node->page, node->buf);
         }
         break;
 			default:
