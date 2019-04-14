@@ -245,7 +245,7 @@ void *process_swapQ ()
 		//prepare for the disk action
 		//
 		switch (node->act) {
-			case actRead: { printf("freeFhead @ process_swap(): %d\n", getffhead());
+			case actRead: { 
         //read from swap space
           read_swap_page(node->pid, node->page, node->buf);
           load_page_to_memory(node->pid,node->page, node->buf);
@@ -276,7 +276,7 @@ void *process_swapQ ()
 				}
 				break;
 			case toReady:
-        if(node->act == actRead){printf("freeFhead @ process_swap(): %d\n", getffhead());
+        if(node->act == actRead){
           printf("sending to readyQ\n");
           insert_ready_process(node->pid);
           printf("sent to readyQ\n");

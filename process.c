@@ -302,14 +302,12 @@ int submit_process (char *fname)
     if (pid > idlePid)
     { int dataOffset;
       ret = load_process (pid, fname, &dataOffset);   // return #pages loaded
-      printf("freeFhead @ submit_process(): %d\n", getffhead());
       if (ret > 0)
       { PCB[pid]->PC = 0;
         PCB[pid]->AC = 0;
         PCB[pid]->exeStatus = eReady;
         PCB[pid]->MDbase = dataOffset;
         printf("Data offset for %s is %d. Got %d pages loaded into swapQ\n", fname, dataOffset, ret);
-        printf("freefhead @ submit_process: %d\n", getffhead());
         // swap manager will put the process to ready queue
         numUserProcess++;
         return (pid);

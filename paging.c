@@ -352,19 +352,18 @@ int get_free_frame (){
   // If freeFhead is 0, then we've done something very wrong somewhere
   // It should always be 2 or greater
   // same for next and prev for any Q element
-  printf("freeFhead: %d\n", freeFhead);
   if(freeFhead != nullIndex){
     freeFrameIndex = freeFhead;
     int next = memFrame[freeFhead].next;
     //if there is no next frame, then tail and head must be set to 0
-    if(next > nullIndex){
+    if(next != nullIndex){
       memFrame[next].prev = nullIndex;
       freeFhead = next;
     } else {
       freeFhead = nullIndex;
       freeFtail = nullIndex;
     }
-    memFrame[freeFhead].next = nullIndex;
+    memFrame[freeFrameIndex].next = nullIndex;
     return freeFrameIndex;
   } else {
     // we are assuming that a free frame will need to be used
@@ -477,9 +476,6 @@ void initialize_memory ()
   // First free frame is at OSpages, last is at numFrames-1
   freeFhead = OSpages;
   freeFtail = numFrames - 1;
-
-  printf("freeFhead after init is %d\n", freeFhead);
-  printf("freeFtail after init is %d\n", freeFtail);
 }
 
 //==========================================
@@ -544,7 +540,7 @@ void dump_process_memory (int pid)
   printf ("************** Memory Content for Process pid: %d\n", pid);
   int i, frame;
   for (i=0; i<maxPpages; i++) { 
-    frame = PCB[pid]->PTptr[pid];
+    frame = PCB[pid]->PTptr[i];
     switch(frame){
       case nullPage:
         // break out of for loop by setting i to maxPpages
