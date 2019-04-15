@@ -147,7 +147,7 @@ int get_data (int offset)
 	  break;
     default:
       CPU.MBR = Memory[address].mData;
-	  printf("get_data: Memory Address %x contained %d\n", address, Memory[address].mData);
+	  printf("get_data: Memory Address %x contained %f\n", address, Memory[address].mData);
       return mNormal;
 	  break;
   }
@@ -171,7 +171,7 @@ int put_data (int offset)
 	  break;
     default:
       Memory[address].mData = CPU.AC;
-	  printf("put_data: Memory Address %x contains %d\n", address, Memory[address].mData);
+	  printf("put_data: Memory Address %x contains %f\n", address, Memory[address].mData);
       // dirty bit set in calculate_address since it's easier there than here
       return mNormal;
 	  break;
