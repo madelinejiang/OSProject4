@@ -26,12 +26,11 @@ int load_instruction (mType *buf, int page, int offset){
   }
 
   if(Debug) {
-    printf("Loading instruction: %d, %d\n", opcode, operand); 
+    ("Loading instruction: %d, 0x%08x\n", opcode, operand); 
   }
   opcode = opcode << opcodeShift;
   operand = operand & operandMask;
   buf[offset].mInstr = opcode | operand;
-  //printf("buf[offset].mInstr contains %x\n", buf[offset].mInstr); //for debugging
   return (progNormal);
 }
 
@@ -46,7 +45,7 @@ int load_data (mType *buf, int page, int offset)
   }
 
   if(Debug) {
-    printf("Loading data: %d\n", data); 
+    ("Loading data: %f\n", data); 
   }
   buf[offset].mData = data;
   return (progNormal);
@@ -96,20 +95,16 @@ int load_process_to_swap (int pid, char *fname, int *dataOffset)
     for(j=0; j < pageSize; j++){
       if(line < msize){
         if(line < numinstr){
-          printf("value of line %d is an instruction\n", line);
           load_instruction(page, i, j);
         } else {
-          printf("value of line %d is an data\n", line);
           load_data(page, i, j);
         }
 		    line++;
       }  else {
-        break;
+        page[j].mInstr = 0;
       }
     }
-
-    insert_swapQ(pid, i, (unsigned *) page, actWrite, freeBuf);
-    printf("submitted a page\n");
+    insert_swapQ(pid, i, (unsigned *)page, actWrite, freeBuf);
     loadedPages++;
 	  update_process_pagetable(pid, i, pendingPage);
   }
@@ -146,9 +141,11 @@ int load_pages_to_memory (int pid, int numpages)
   return progNormal;
 }
 
-int load_process (int pid, char *fname, int *dataOffset)
+int load_process (int pid, char *fname)
 { int ret;
-  ret = load_process_to_swap (pid, fname, dataOffset);   // return #pages loaded
+  int dataOffset;
+  ret = load_process_to_swap (pid, fname, &dataOffset);   // return #pages loaded
+  PCB[pid]->MDbase = dataOffset;  //It should be somewhere else, but this is the quick, dirty way of making sure it's loaded before pages load to memory
   if(Debug){
     printf("%d pages inserted in swapQ\n", ret);
   }

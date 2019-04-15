@@ -48,7 +48,6 @@ int read_swap_page (int pid, int page, unsigned *buf)
   int ret = lseek (diskfd, location, SEEK_SET);
   if (ret < 0) perror ("Error lseek in read: \n");
 
-
   int retsize = read (diskfd, buf, pagedataSize);
   if (retsize != pagedataSize) 
   { printf ("Error: Disk read returned incorrect size: %d\n", retsize); 
@@ -60,25 +59,23 @@ int read_swap_page (int pid, int page, unsigned *buf)
   return 0;
 }
 
-int write_swap_page(int pid, int page, unsigned *buf)
-{
-	// reference the previous code for this part
-	// but previous code was not fully completed
-	if (pid < 2 || pid > maxProcess)
-	{
-		printf("Error: Incorrect pid for disk write: %d\n", pid);
-		return (-1);
-	}
-	int location = (pid - 2) * PswapSize + page * pagedataSize;
-	int ret = lseek(diskfd, location, SEEK_SET);
-	if (ret < 0) perror("Error lseek in write: \n");
-	
-	int retsize = write (diskfd, buf, pagedataSize);
-	if (retsize != pagedataSize)
-	  { printf ("Error: Disk write returned incorrect size: %d\n", retsize);
-		exit(-1);
-	  }
-
+int write_swap_page (int pid, int page, unsigned *buf)
+{ 
+  // reference the previous code for this part
+  // but previous code was not fully completed
+  if (pid < 2 || pid > maxProcess) 
+  { printf ("Error: Incorrect pid for disk write: %d\n", pid); 
+    return (-1);
+  }
+  int location = (pid-2) * PswapSize + page*pagedataSize;
+  int ret = lseek (diskfd, location, SEEK_SET);
+  if (ret < 0) perror ("Error lseek in write: \n");
+  int retsize = write (diskfd, buf, pagedataSize);
+  printf("wrote %d bytes\n", retsize);
+  if (retsize != pagedataSize) 
+    { printf ("Error: Disk write returned incorrect size: %d\n", retsize); 
+      exit(-1);
+    }
   usleep (diskRWtime);
 
   //we should return something better than just 0
@@ -97,15 +94,15 @@ int dump_process_swap_page (int pid, int page)
   int ret = lseek (diskfd, location, SEEK_SET);
   //printf ("loc %d %d %d, size %d\n", pid, page, location, pagedataSize);
   if (ret < 0) perror ("Error lseek in dump: \n");
-  int *buf = (int *) malloc(pagedataSize);
+  char *buf = (char *) malloc(pagedataSize);
   int retsize = read (diskfd, buf, pagedataSize);
   if (retsize != pagedataSize) 
   { printf ("Error: Disk dump read incorrect size: %d\n", retsize); 
     exit(-1);
   }
-  printf ("Content of process in dump %d page %d:\n", pid, page);
+  printf ("Content of process %d page %d:\n", pid, page);
   int k;
-  for (k=0; k<pageSize; k++) printf ("%x ", buf[k]);
+  for (k=0; k<pageSize; k++) printf ("%d ", buf[k]);
   printf ("\n");
 
   //we should return something better than just 0
@@ -129,7 +126,7 @@ void dump_swap() {
 // open the file with the swap space size, initialize content to 0
 void initialize_swap_space ()
 { int ret, i, j, k;
-  int buf[pageSize];
+  unsigned buf[pageSize];
 
   swapspaceSize = maxProcess*maxPpages*pageSize*dataSize;
   PswapSize = maxPpages*pageSize*dataSize;
@@ -202,24 +199,18 @@ void dump_swapQ ()
 void insert_swapQ (pid, page, buf, act, finishact)
 int pid, page, act, finishact;
 unsigned *buf;
-{   sem_wait(&swapq_mutex);
+{ sem_wait(&swapq_mutex);
   SwapQnode *node = (SwapQnode *) malloc(sizeof(SwapQnode));
   
   if(buf == NULL){
-    buf = malloc(sizeof(unsigned *) * pagedataSize);
+    buf = malloc(sizeof(unsigned) * pagedataSize);
   }
-  /*else {
-	  printf("Contents of page are: \n");
-	  for (int j = 0; j < pageSize; j++) {
-		  printf("Contents of pagebuf with offset %d is %x\n", j, buf[j]);
-	  }
-  }*/
 
   node->pid = pid;
   node->page = page;
   node->act = act;
   node->finishact = finishact;
-  node->buf = buf;//address of the page
+  node->buf = buf;
   ////MJ
   if (swapQhead == NULL) { //empty swapQ so make it the head
 	  swapQhead = node;
@@ -230,9 +221,6 @@ unsigned *buf;
   swapQtail = node;  //new node is the tail
   swapQtail->next = NULL;
   sem_post(&swap_semaq);
-
-  printf("finished inserting one item into swapQ: %d, %d\n", pid, page);//debugging
-
   sem_post(&swapq_mutex);
 }
 
@@ -246,7 +234,6 @@ void *process_swapQ ()
 		sem_wait(&swapq_mutex);
 		//<critical section>
 		//dequeue
-    printf("HELLO!\n");
 		SwapQnode *node = swapQhead;
 		swapQhead = node->next;
 
@@ -256,21 +243,12 @@ void *process_swapQ ()
 			case actRead: { 
         //read from swap space
           read_swap_page(node->pid, node->page, node->buf);
-		  printf("from swap.c loading to memory pid:%d page:%d buf:%x\n", node->pid, node->page, node->buf);
-		  {
-			  printf("Contents of page are: \n");
-			  for (int j = 0; j < pageSize; j++) {
-				  printf("Contents of pagebuf with offset %d is %x\n", j, node->buf[j]);
-			  }
-		  }
-		  load_page_to_memory(node->pid,node->page, node->buf);
+          load_page_to_memory(node->pid,node->page, node->buf);
         }
         break;
 			case actWrite: {
 				//write to swap space
 				write_swap_page(node->pid, node->page,node->buf);
-
-				printf("wrote to swap.disk %d %d %u(address of buf)\n", node->pid, node->page, node->buf);
         }
         break;
 			default:
@@ -293,10 +271,7 @@ void *process_swapQ ()
 				break;
 			case toReady:
         if(node->act == actRead){
-          printf("sending to readyQ\n");
           insert_ready_process(node->pid);
-          printf("sent to readyQ\n");
-          printf("I supposedly put it in the readyQ\n");
         } else {
           printf("ERROR: Cannot place a process to ReadyQ on actWrite\n");
         }

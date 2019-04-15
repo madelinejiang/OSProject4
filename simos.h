@@ -257,7 +257,7 @@ void process_admin_command ();
 void start_client_submission ();
 void end_client_submission ();
 void one_submission ();
-int load_process (int pid, char *fname, int*dataOffset);
+int load_process (int pid, char *fname);
 void load_idle_process ();
 void start_swap_manager ();
 
