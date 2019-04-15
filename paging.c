@@ -122,6 +122,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
       int pageOffset = offset - pageIndex * pageSize;
       int address = memOffset + pageOffset;
       memFrame[frame].dirty = dirtyFrame;
+	  printf("Accessed memory address %x\n", address);
       return address;
     }
   }
@@ -140,11 +141,15 @@ int get_data (int offset)
   switch(address){
     case mError:
       return mError;
+	  break;
     case mPFault:
       return mPFault;
+	  break;
     default:
       CPU.MBR = Memory[address].mData;
+	  printf("get_data: Memory Address %x contained %d\n", address, Memory[address].mData);
       return mNormal;
+	  break;
   }
 
 }
@@ -160,12 +165,16 @@ int put_data (int offset)
   switch(address){
     case mError:
       return mError;
+	  break;
     case mPFault:
       return mPFault;
+	  break;
     default:
-      Memory[address].mData = CPU.MBR;
+      Memory[address].mData = CPU.AC;
+	  printf("put_data: Memory Address %x contains %d\n", address, Memory[address].mData);
       // dirty bit set in calculate_address since it's easier there than here
       return mNormal;
+	  break;
   }
 }
 
@@ -213,7 +222,7 @@ void dump_one_frame (int findex) {
   printf("************ Dump contents of frame %d\n", findex);
   
   for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
-    printf("Memory @ - 0x%08x| Data - 0x%04x\n", i, Memory[i]);
+    printf("Memory @ - 0x%08x| Data - 0x%04x | Memory[i].mData -%f \n", i, Memory[i], Memory[i].mData);
   }
 }
 

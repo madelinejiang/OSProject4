@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <strings.h>
+#include <string.h>
 #include "simos.h"
 
 //=========================================================================
@@ -29,7 +31,7 @@ void terminal_output (int pid, char *outstr);
 
 typedef struct TermQnodeStruct
 { int pid, type;
-  char *str;
+char str[100];
   struct TermQnodeStruct *next;
 } TermQnode;
 
@@ -63,22 +65,26 @@ void dump_termio_queue ()
 void insert_termio (pid, outstr, type)
 int pid, type;
 char *outstr;
-{ TermQnode *node;
+{ 	
+	sem_wait(&term_mutex);
+TermQnode *node;
+if (Debug) printf("Insert term queue %d %s\n", pid, outstr);
+node = (TermQnode *)malloc(sizeof(TermQnode));
+node->pid = pid;
+strcpy(node->str, outstr);
+node->type = type;
+node->next = NULL;
+if (termQtail == NULL) // termQhead would be NULL also
+{
+	termQtail = node; termQhead = node; sem_post(&term_semaq);
+}
+else // insert to tail
+{
+	termQtail->next = node; termQtail = node; sem_post(&term_semaq);
+}
+if (Debug) dump_termio_queue();
 
-  if (Debug) printf ("Insert term queue %d %s\n", pid, outstr);
-  node = (TermQnode *) malloc (sizeof (TermQnode));
-  node->pid = pid;
-  node->str = outstr;
-  node->type = type;
-  node->next = NULL;
-  sem_wait(&term_mutex);
-    if (termQtail == NULL) // termQhead would be NULL also
-      { termQtail = node; termQhead = node; }
-    else // insert to tail
-      { termQtail->next = node; termQtail = node; }
-    if (Debug) dump_termio_queue ();
-    sem_post(&term_semaq);
-  sem_post(&term_mutex);
+sem_post(&term_mutex);
   
 }
 
@@ -88,6 +94,7 @@ void handle_one_termio ()
 { TermQnode *node;
   sem_wait(&term_semaq);
   sem_wait(&term_mutex);
+  dump_ready_queue();
     if (Debug) dump_termio_queue ();
     if (termQhead == NULL)
       printf ("No process in terminal queue!!!\n");
@@ -98,11 +105,11 @@ void handle_one_termio ()
       { insert_endWait_process (node->pid);
         set_interrupt (endWaitInterrupt);
       }   // if it is the endIO type, then job done, just clean termio queue
-
+	  printf("%d\n", node->type);
       if (Debug) printf ("Remove term queue %d %s\n", node->pid, node->str);
       termQhead = node->next;
       if (termQhead == NULL) termQtail = NULL;
-      free (node->str); free (node);
+      free (node);
       if (Debug) dump_termio_queue ();
     }
   sem_post(&term_mutex);
@@ -120,9 +127,14 @@ void terminal_output (pid, outstr)
 int pid;
 char *outstr;
 {
-  fprintf (fterm, "%s\n", outstr);
-  fflush (fterm);
-  usleep (termPrintTime);
+	printf("\n*************\n Before print before leaving terminal output node contains %d %s\n", pid, outstr);
+    fprintf (fterm, "%s ", outstr); 
+	printf("\n*************\n After print before leaving terminal output node contains %d %s\n", pid, outstr);
+	fflush (fterm);
+
+	usleep(termPrintTime);
+	printf("\n*************\n After sleep before leaving terminal output node contains %d %s\n", pid, outstr);
+
 }
 
 void *termIO ()

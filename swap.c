@@ -71,7 +71,7 @@ int write_swap_page (int pid, int page, unsigned *buf)
   int ret = lseek (diskfd, location, SEEK_SET);
   if (ret < 0) perror ("Error lseek in write: \n");
   int retsize = write (diskfd, buf, pagedataSize);
-  printf("wrote %d bytes\n", retsize);
+ // printf("wrote %d bytes\n", retsize);
   if (retsize != pagedataSize) 
     { printf ("Error: Disk write returned incorrect size: %d\n", retsize); 
       exit(-1);

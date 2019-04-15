@@ -82,6 +82,7 @@ int get_ready_process ()
     readyHead = rnode->next;
     free (rnode);
     if (readyHead == NULL) readyTail = NULL;
+	printf("DEQUEUE\n");
   }
   return (pid);
 }

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "simos.h"
+#include <string.h>
 
 
 #define OPload 2
@@ -128,8 +129,10 @@ void execute_instruction ()
     case OPprint:
       // *** ADD CODE for the instruction
       {
-        char* str = (char*)malloc(16 * sizeof(char));
-        sprintf(str, "%f", CPU.MBR);
+		get_data(CPU.IRoperand);
+		char str[100];
+		bzero(str, sizeof(str));
+		sprintf(str, "%.2f", CPU.MBR);
         insert_termio(CPU.Pid, str, regularIO);
       }
       break;
