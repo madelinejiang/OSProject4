@@ -29,7 +29,7 @@ void process_admin_command ()
         dump_ready_queue ();
         dump_endWait_list ();
         break;
-      case 'r':   // dump the list of available PCBs
+      case 'r':   // dump the registers
         dump_registers (); break;
       case 'p':   // dump the list of available PCBs
         dump_PCB_list (); break;

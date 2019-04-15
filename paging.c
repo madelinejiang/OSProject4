@@ -114,6 +114,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
     case pendingPage:
       // Not sure what to do here... Nothing?
       // If it hits this, then we've done something wrong I think
+      printf("ERROR: @calculate_address() we are definitely doing something wrong\n");
       return -1;
 	  break;
     default: {
@@ -121,7 +122,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
       int pageOffset = offset - pageIndex * pageSize;
       int address = memOffset + pageOffset;
       memFrame[frame].dirty = dirtyFrame;
-      return -1;
+      return address;
     }
   }
   //Should not reach this point
@@ -175,7 +176,6 @@ int get_instruction (int offset)
   // return mNormal, mPFault or mError
 
   int address = calculate_memory_address(offset, flagRead);
-
   switch(address){
     case mError:
       return mError;
@@ -213,7 +213,7 @@ void dump_one_frame (int findex) {
   printf("************ Dump contents of frame %d\n", findex);
   
   for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
-    printf("Memory @ - 0x%032x| Data - 0x%016x\n", i, Memory[i]);
+    printf("Memory @ - 0x%08x| Data - 0x%04x\n", i, Memory[i]);
   }
 }
 
@@ -381,18 +381,19 @@ int get_free_frame (){
 #define pInstr 2
 #define pMix 4
 
-int load_page_to_memory(int pid, int page, mType *buf){
+int load_page_to_memory(int pid, int page, unsigned *buf){
   int frame = get_free_frame();
-  printf("free frame received: %d\n", frame);
   if(frame == nullIndex){
     printf("ERROR: cannot get free frame @ load_page_to_memory\n.");
     return mError;
   }
 
+  // Needed to properly interpret the incoming buffer, apparently
+  mType *inbuf = (mType *) buf;
+
   //Calculate page and word offset of data start
   int dataPageIndex = PCB[pid]->MDbase / pageSize;
-  printf("mdmbase = %d | dataPageIndex %d\n", PCB[pid]->MDbase, dataPageIndex);
-  int type = page - dataPageIndex;
+  int type = page - dataPageIndex; 
   int dataOffset = 0; // the offset from start of page where data starts, only needed for pMix
   if(type > 0){
     type = pData;
@@ -401,26 +402,23 @@ int load_page_to_memory(int pid, int page, mType *buf){
   } else {
     // page == dataPageIndex
     type = pMix;
+    dataOffset = PCB[pid]->MDbase - dataPageIndex * pageSize;
   }
 
   int j = 0;
   for (int i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
     switch(type){
       case pData:
-        Memory[i].mData = buf[j].mData;
-        printf("@%d - %f\n", i, buf[j].mData);
+        Memory[i].mData = inbuf[j].mData;
         break;
       case pInstr:
-        Memory[i].mInstr = buf[j].mInstr;
-        printf("@%d - %d\n", i, buf[j].mInstr);
+        Memory[i].mInstr = inbuf[j].mInstr;
         break;
       case pMix:
-        if(j < PCB[pid]->MDbase){
-          Memory[i].mInstr = buf[j].mInstr;
-          printf("@%d - %d\n", i, buf[j].mInstr);
+        if(j < dataOffset){
+          Memory[i].mInstr = inbuf[j].mInstr;
         } else {
-          Memory[i].mData = buf[j].mData;
-          printf("@%d - %f\n", i, buf[j].mData);
+          Memory[i].mData = inbuf[j].mData;
         }
         break;
       default:
@@ -597,7 +595,7 @@ void page_fault_handler ()
 				outbuf[j] = Memory[i];
 				j++;
 			}
-			insert_swapQ(pidout, pageout, outbuf, actWrite, Nothing);
+			insert_swapQ(pidout, pageout, (unsigned *) outbuf, actWrite, Nothing);
 		}
 		//else since the frame isn't dirty, we don't need to write back to swapQ
 	}

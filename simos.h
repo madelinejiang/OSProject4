@@ -90,7 +90,7 @@ void update_frame_info (int findex, int pid, int page);
 void direct_put_instruction (int findex, int offset, int instr);
 void direct_put_data (int findex, int offset, mdType data);
 int get_free_frame ();
-int load_page_to_memory(int pid, int page, mType *buf);
+int load_page_to_memory(int pid, int page, unsigned *buf);
 
 // by cpu.c
 void page_fault_handler ();
@@ -203,7 +203,7 @@ void insert_ready_process(); //called by loader when loading fresh programs, and
 #define actRead 0   // flags for act (action), read or write, with(out) signal
 #define actWrite 1
 
-void insert_swapQ (int pid, int page, mType *buf, int act, int finishact);
+void insert_swapQ (int pid, int page, unsigned *buf, int act, int finishact);
 void dump_swapQ ();
 int dump_process_swap_page (int pid, int page);
 void dump_process_swap (int pid);

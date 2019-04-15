@@ -306,8 +306,7 @@ int submit_process (char *fname)
       { PCB[pid]->PC = 0;
         PCB[pid]->AC = 0;
         PCB[pid]->exeStatus = eReady;
-        printf("Data offset for %s is %d. Got %d pages loaded into swapQ\n", fname, dataOffset, ret);
-        printf("PCB[pid]->MDbase = %d\n", PCB[pid]->MDbase);
+        // loader.c will fill in MDbase since we need it before putting any pages into memory
         // swap manager will put the process to ready queue
         numUserProcess++;
         return (pid);
