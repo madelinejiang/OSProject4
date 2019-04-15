@@ -26,7 +26,7 @@ void dump_registers ()
   printf ("IR=(%d,%d), ", CPU.IRopcode, CPU.IRoperand);
   printf ("AC="mdOutFormat", ", CPU.AC);
   printf ("MBR="mdOutFormat"\n", CPU.MBR);
-  printf ("          Status=%d, ", CPU.exeStatus);
+  printf ("Status=%d, ", CPU.exeStatus);
   printf ("IV=%x, ", CPU.interruptV);
   printf ("PT=%x, ", CPU.PTptr);
   printf ("cycle=%d\n", CPU.numCycles);
@@ -77,7 +77,6 @@ void handle_interrupt ()
 
 void fetch_instruction ()
 { int mret;
-
   mret = get_instruction (CPU.PC);
   if (mret == mError) CPU.exeStatus = eError;
   else if (mret == mPFault) CPU.exeStatus = ePFault;

@@ -135,7 +135,7 @@ int get_data (int offset)
   // copy the memory content to MBR
   // return mNormal, mPFault or mError
 
-  int address = calculate_memory_address(offset, flagRead);
+  int address = calculate_memory_address(CPU.MDbase+offset, flagRead);
 
   switch(address){
     case mError:
