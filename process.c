@@ -350,6 +350,7 @@ void execute_process ()
     }
     else if (CPU.exeStatus == ePFault || CPU.exeStatus == eWait) {
       context_out(pid, intime, Pfault);
+	  if (CPU.exeStatus==ePFault) printf("page fault detected in execute_process\n");
       deactivate_timer (event);
     }
     else // CPU.exeStatus == eError or eEnd

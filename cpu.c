@@ -65,7 +65,7 @@ void handle_interrupt ()
     }
 
     if ((CPU.interruptV & pFaultException) == pFaultException){
-      //*printf("gotta handle that page fault\n");
+      printf("handle_interrupt that page fault\n");
       page_fault_handler();
       clear_interrupt(pFaultException);
     }
@@ -83,7 +83,7 @@ void fetch_instruction ()
   mret = get_instruction (CPU.PC);
   if (mret == mError) CPU.exeStatus = eError;
   else if (mret == mPFault) {
-    //*printf("page fault please?\n");
+	printf("page fault detected after get_instruction\n");
     CPU.exeStatus = ePFault;
   }
   else // fetch data, but exclude OPend and OPsleep, which has no data
@@ -92,11 +92,16 @@ void fetch_instruction ()
         && CPU.IRopcode != OPstore)
     { mret = get_data (CPU.IRoperand); 
       if (mret == mError) CPU.exeStatus = eError;
-      else if (mret == mPFault) CPU.exeStatus = ePFault;
+	  else if (mret == mPFault) { 
+		  CPU.exeStatus = ePFault; printf("page fault detected after get_data\n");  
+	  }
       else if (CPU.IRopcode == OPifgo)
       { mret = get_instruction (CPU.PC+1);
         if (mret == mError) CPU.exeStatus = eError;
-        else if (mret == mPFault) CPU.exeStatus = ePFault;
+		else if (mret == mPFault) { 
+			printf("page fault detected in OPifgo\n");
+			CPU.exeStatus = ePFault; 
+		}
         else { CPU.PC++; CPU.IRopcode = OPifgo; }
         // ifgo is different from other instructions, it has two words
         //   test variable is in memory, memory addr is in the 1st word
@@ -168,11 +173,10 @@ void execute_instruction ()
 
 void cpu_execution ()
 { int mret;
-
   // perform all memory fetches, analyze memory conditions all here
   while (CPU.exeStatus == eRun)
   { fetch_instruction ();
-    if (Debug) { printf ("Fetched: "); dump_registers (); }
+  if (Debug) { printf("Fetched: "); dump_registers();printf("CPU.exeStatus = %d\n", CPU.exeStatus);}
     if (CPU.exeStatus == eRun){ 
       execute_instruction ();
       printf("CPU.exeStatus = %d\n", CPU.exeStatus);
@@ -189,7 +193,9 @@ void cpu_execution ()
         // no other instruction will cause problem and execution is done
       if (Debug) { printf ("Executed: "); dump_registers (); }
     }
-
+	if (CPU.exeStatus == ePFault) {
+		set_interrupt(pFaultException);
+	}
     if (CPU.interruptV != 0) handle_interrupt ();
     advance_clock ();
       // since we don't have clock, we use instruction cycle as the clock
