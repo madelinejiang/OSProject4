@@ -88,7 +88,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
 
   //after we get the pageIndex, check the PT and return appropriate result
   int frame = CPU.PTptr[pageIndex];
-  printf("page checked out to be frame: %d\n", frame);
+  //*  printf("page checked out to be frame: %d\n", frame);
   switch(frame){
     case nullPage:
       // return this since this is a access violation
@@ -200,7 +200,7 @@ void dump_one_frame (int findex) {
   printf("************ Dump contents of frame %d\n", findex);
   
   for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
-    printf("Memory @ - 0x%08x| Data - 0x%04x\n", i, Memory[i]);
+    printf("Memory @ - 0x%08x| Data - 0x%08x\n", i, Memory[i]);
   }
 }
 
@@ -334,7 +334,7 @@ int select_agest_frame ()
 // if there is no free frame, then get one frame with the lowest age
 // this func always returns a frame, either from free list or get one with lowest age
 int get_free_frame (){ 
-  printf("freefHead @ start of get_free_frame() is %d\n", freeFhead);
+  //* printf("freefHead @ start of get_free_frame() is %d\n", freeFhead);
   int freeFrameIndex;
   // if the there is a head, then there are free pages
   // If freeFhead is 0, then we've done something very wrong somewhere
@@ -352,7 +352,7 @@ int get_free_frame (){
       freeFtail = nullIndex;
     }
     memFrame[freeFrameIndex].next = nullIndex;
-    printf("freefHead @ before return of get_free_frame() is %d\n", freeFhead);
+    //* printf("freefHead @ before return of get_free_frame() is %d\n", freeFhead);
     return freeFrameIndex;
   } else {
     // we are assuming that a free frame will need to be used
@@ -566,7 +566,7 @@ void page_fault_handler ()
   if(CPU.IRopcode == OPload || CPU.IRopcode == OPstore){
     pagein += CPU.MDbase;
   }
-  printf("pagein = %d\n", pagein);
+ //* printf("pagein = %d\n", pagein);
 	pagein = pagein / pageSize;
 	int pidin = CPU.Pid;
   update_process_pagetable(CPU.Pid, pagein, pendingPage);

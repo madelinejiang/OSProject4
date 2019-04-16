@@ -49,13 +49,13 @@ sem_t term_mutex;
 void dump_termio_queue ()
 { TermQnode *node;
 
-  printf ("******************** Term Queue Dump\n");
+printf("\n********************Term Queue Dump********************\n");
   node = termQhead;
   while (node != NULL)
   { printf ("%d, %s\n", node->pid, node->str);
     node = node->next;
   }
-  printf ("\n");
+ printf("\n*******************************************************\n");
 }
 
 // insert terminal queue is not inside the terminal thread, but called by
@@ -65,7 +65,7 @@ int pid, type;
 char *outstr;
 { TermQnode *node;
 
-  if (Debug) printf ("Insert term queue %d %s\n", pid, outstr);
+  if (Debug) printf ("++++++Insert term queue %d %s++++++\n", pid, outstr);
   node = (TermQnode *) malloc (sizeof (TermQnode));
   node->pid = pid;
   node->str = outstr;
@@ -99,7 +99,7 @@ void handle_one_termio ()
         set_interrupt (endWaitInterrupt);
       }   // if it is the endIO type, then job done, just clean termio queue
 
-      if (Debug) printf ("Remove term queue %d %s\n", node->pid, node->str);
+      if (Debug) printf ("------Remove term queue %d %s------\n", node->pid, node->str);
       termQhead = node->next;
       if (termQhead == NULL) termQtail = NULL;
       free (node->str); free (node);
