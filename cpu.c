@@ -17,6 +17,7 @@ void initialize_cpu ()
 { // Generally, cpu goes to a fix location to fetch and execute OS
   CPU.interruptV = 0;
   CPU.numCycles = 0;
+  int pFaultType = noInstrPFlag;
 }
 
 void dump_registers ()
@@ -84,6 +85,7 @@ void fetch_instruction ()
   if (mret == mError) CPU.exeStatus = eError;
   else if (mret == mPFault) {
 	printf("page fault detected after get_instruction\n");
+	pFaultType = instrPFlag;
     CPU.exeStatus = ePFault;
   }
   else // fetch data, but exclude OPend and OPsleep, which has no data

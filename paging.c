@@ -372,6 +372,7 @@ int get_free_frame (){
 
 int load_page_to_memory(int pid, int page, unsigned *buf){
   int frame = get_free_frame();
+  printf("Retrieved frame %d for requested pid %d page %d \n", frame, pid, page);
   if (frame == nullIndex) { //no free frames
 		//get the lowest age frame
 		frame = select_agest_frame();
@@ -556,20 +557,28 @@ void page_fault_handler ()
   /*=======================^From original file*========================================*/
   // context switch On a page fault, the state of the faulting program is saved and the O.S.takes over
 	// via process.c (TODO)
+
+
 	// get_free_frame should be called only once, upon load to memory
   // the select_agest_frame should also be in load_page_to_memory
   // SO what does this do? Basically it just sends the page request to swapQ
   // Then load_page_to_memory does its best to load the page, and swap out if needed
 	
 	// update the frame metadata and the page tables of the involved processes
-  int pagein = CPU.IRoperand;
-  if(CPU.IRopcode == OPload || CPU.IRopcode == OPstore){
-    pagein += CPU.MDbase;
-  }
- //* printf("pagein = %d\n", pagein);
-	pagein = pagein / pageSize;
+	int pagein;
+	if (pFaultType == instrPFlag) {
+		pagein = CPU.PC;
+		pFaultType = noInstrPFlag;//resolves the flag
+	}
+	else {
+		pagein = CPU.IRoperand;//if it's the data operand
+		pagein += CPU.MDbase;
+	}
+	printf("requested line %d\n", pagein);
+	pagein = (pagein-1)/ pageSize +1;
+	printf("requested pagein = %d\n", pagein);
 	int pidin = CPU.Pid;
-  update_process_pagetable(CPU.Pid, pagein, pendingPage);
+	update_process_pagetable(CPU.Pid, pagein, pendingPage);
 	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
 }
 

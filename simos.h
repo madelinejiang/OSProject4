@@ -99,7 +99,9 @@ int load_page_to_memory(int pid, int page, unsigned *buf);
 
 // by cpu.c
 void page_fault_handler ();
-
+#define noInstrPFlag 0
+#define instrPFlag 1
+int pFaultType;
 
 //================= cpu.c related definitions ======================
 
