@@ -46,6 +46,11 @@ int diskRWtime;   // simulated time (sleep) for disk IO (a page)
 typedef float mdType;
 #define mdInFormat "%f"
 #define mdOutFormat "%.2f"
+
+// define special values for page/frame number
+#define nullIndex -1   // free frame list null pointer
+#define nullPage -1   // page does not exist yet
+#define diskPage -2   // page is on disk swap space
 #define pendingPage -3  // page is pending till it is actually swapped
 // have to ensure: #memory-frames < address-space/2, (pageSize >= 2)
 //    becuase we use negative values with the frame number
@@ -90,7 +95,6 @@ void update_frame_info (int findex, int pid, int page);
 void direct_put_instruction (int findex, int offset, int instr);
 void direct_put_data (int findex, int offset, mdType data);
 int get_free_frame ();
-int getffhead();//debugging
 int load_page_to_memory(int pid, int page, unsigned *buf);
 
 // by cpu.c

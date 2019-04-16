@@ -83,7 +83,11 @@ int get_ready_process ()
     free (rnode);
     if (readyHead == NULL) readyTail = NULL;
   }
-  return (pid);
+  if(PCB[pid] == NULL){
+    return get_ready_process();
+  } else {
+    return (pid);
+  }
 }
 
 void dump_ready_queue ()
@@ -231,8 +235,9 @@ void clean_process (int pid)
   free_PCB (pid);  // PCB has to be freed last, other frees use PCB info
 } 
 
-void end_process (int pid)
-{ PCB[pid]->exeStatus = CPU.exeStatus;
+void end_process (int pid) { 
+  dump_ready_queue();
+  PCB[pid]->exeStatus = CPU.exeStatus;
     // PCB[pid] is not updated, no point to do a full context switch
 
   // send end process print msg to terminal, str will be freed by terminal
@@ -244,19 +249,20 @@ void end_process (int pid)
     sprintf (str, "Process %d had encountered error in execution!!!\n", pid);
   }
   else  // was eEnd
-  { printf ("Process %d had completed successfully: Time=%d, PF=%d\n",
-             pid, PCB[pid]->timeUsed, PCB[pid]->numPF);
+  { // printf ("Process %d had completed successfully: Time=%d, PF=%d\n",
+    //          pid, PCB[pid]->timeUsed, PCB[pid]->numPF);
     sprintf (str, "Process %d had completed successfully: Time=%d, PF=%d\n",
              pid, PCB[pid]->timeUsed, PCB[pid]->numPF);
   }
   insert_termio (pid, str, endIO);
 
   // invoke io to print str, process has terminated, so no wait state
-
+dump_ready_queue();
   numUserProcess--;
   clean_process (pid); 
     // cpu will clean up process pid without waiting for printing to finish
     // so, io should not access PCB[pid] for end process printing
+dump_ready_queue();    
 }
 
 // this function initializes the idle process
@@ -324,8 +330,9 @@ int submit_process (char *fname)
 void execute_process ()
 { int pid, intime;
   genericPtr event;
-  
+  printf("execute_process() getting ready process\n");
   pid = get_ready_process ();
+  printf("got ready process\n");
   if (pid != nullReady)
   { 
     // *** ADD CODE to perform context switch and call cpu_execution
@@ -334,7 +341,9 @@ void execute_process ()
     intime = CPU.numCycles;
     CPU.exeStatus = eRun;
     event = add_timer (cpuQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
+    printf("executed cpu\n");
     cpu_execution ();
+    printf("executed cpu\n");
     intime = CPU.numCycles - intime;
     if (CPU.exeStatus == eReady){
       context_out(pid, intime, noPfault);

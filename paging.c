@@ -22,15 +22,6 @@ typedef struct
 
 FrameStruct *memFrame;   // memFrame[numFrames]
 int freeFhead, freeFtail;   // the head and tail of free frame list
-int getffhead(){
-  return freeFhead;
-}
-
-// define special values for page/frame number
-#define nullIndex -1   // free frame list null pointer
-#define nullPage -1   // page does not exist yet
-#define diskPage -2   // page is on disk swap space
-
 
 // define values for fields in FrameStruct
 #define zeroAge 0x00
@@ -97,20 +88,15 @@ int calculate_memory_address (unsigned offset, int rwflag)
 
   //after we get the pageIndex, check the PT and return appropriate result
   int frame = CPU.PTptr[pageIndex];
+  printf("page checked out to be frame: %d\n", frame);
   switch(frame){
     case nullPage:
       // return this since this is a access violation
       return mError;
     case diskPage:
       // return this since this is a page fault
-      if(rwflag == flagRead){
-        set_interrupt(pFaultException);
         return mPFault;
-      } else if(rwflag == flagWrite){
-        // submit write to swapspace buffer? 
-      } else {
-        return mError;
-      }
+      break;
     case pendingPage:
       // Not sure what to do here... Nothing?
       // If it hits this, then we've done something wrong I think
@@ -135,7 +121,8 @@ int get_data (int offset)
   // copy the memory content to MBR
   // return mNormal, mPFault or mError
 
-  int address = calculate_memory_address(CPU.MDbase+offset, flagRead);
+  offset += CPU.MDbase;
+  int address = calculate_memory_address(offset, flagRead);
 
   switch(address){
     case mError:
@@ -347,6 +334,7 @@ int select_agest_frame ()
 // if there is no free frame, then get one frame with the lowest age
 // this func always returns a frame, either from free list or get one with lowest age
 int get_free_frame (){ 
+  printf("freefHead @ start of get_free_frame() is %d\n", freeFhead);
   int freeFrameIndex;
   // if the there is a head, then there are free pages
   // If freeFhead is 0, then we've done something very wrong somewhere
@@ -364,6 +352,7 @@ int get_free_frame (){
       freeFtail = nullIndex;
     }
     memFrame[freeFrameIndex].next = nullIndex;
+    printf("freefHead @ before return of get_free_frame() is %d\n", freeFhead);
     return freeFrameIndex;
   } else {
     // we are assuming that a free frame will need to be used
@@ -371,7 +360,7 @@ int get_free_frame (){
     
     // in the case there are no free frames, we'll need to get oldest frame, preferably not dirty
     
-  return nullIndex;
+    return nullIndex;
   }
 } 
 
@@ -383,53 +372,41 @@ int get_free_frame (){
 
 int load_page_to_memory(int pid, int page, unsigned *buf){
   int frame = get_free_frame();
-  if(frame == nullIndex){
-    printf("ERROR: cannot get free frame @ load_page_to_memory\n.");
-    return mError;
-  }
+  if (frame == nullIndex) { //no free frames
+		//get the lowest age frame
+		frame = select_agest_frame();
+		//need to identify the pid of the frame being swapped out
+		int pidout = memFrame[frame].pid;
+		int pageout = memFrame[frame].page;
+
+		if (memFrame[frame].dirty == dirtyFrame) {
+			// if the frame is dirty, insert a write request to swapQ 
+			//buf will be the contents of the frame in memory
+			//mType outbuf = (mType *)malloc(pageSize * sizeof(mType));
+			//mType outbuf = Memory[frame * pageSize];
+			int j = 0;
+			mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
+			for (int i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
+				outbuf[j] = Memory[i];
+				j++;
+			}
+			insert_swapQ(pidout, pageout, (unsigned *) outbuf, actWrite, freeBuf);
+      update_process_pagetable(pidout, pageout, pendingPage);
+		}
+		//else since the frame isn't dirty, we don't need to write back to swapQ
+	}
 
   // Needed to properly interpret the incoming buffer, apparently
   mType *inbuf = (mType *) buf;
-
-  //Calculate page and word offset of data start
-  int dataPageIndex = PCB[pid]->MDbase / pageSize;
-  int type = page - dataPageIndex; 
-  int dataOffset = 0; // the offset from start of page where data starts, only needed for pMix
-  if(type > 0){
-    type = pData;
-  } else if(type < 0){
-    type = pInstr;
-  } else {
-    // page == dataPageIndex
-    type = pMix;
-    dataOffset = PCB[pid]->MDbase - dataPageIndex * pageSize;
-  }
-
   int j = 0;
   for (int i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
-    switch(type){
-      case pData:
-        Memory[i].mData = inbuf[j].mData;
-        break;
-      case pInstr:
-        Memory[i].mInstr = inbuf[j].mInstr;
-        break;
-      case pMix:
-        if(j < dataOffset){
-          Memory[i].mInstr = inbuf[j].mInstr;
-        } else {
-          Memory[i].mData = inbuf[j].mData;
-        }
-        break;
-      default:
-        printf("ERROR: unable to load page to memory @ load_page_to_memory()\n");
-        break;
-    }
+    Memory[i] = inbuf[j];  
     j++;
   }
 
-  PCB[pid]->PTptr[page] = frame;
-  free(buf);
+  update_frame_info(frame, pid, page);
+  update_process_pagetable(pid, page, frame);
+  free(inbuf);
   return 0;
 }
 
@@ -567,6 +544,9 @@ void dump_process_memory (int pid)
 // the major functions for paging, invoked externally
 //==========================================
 
+#define OPload 2
+#define OPstore 6
+
 void page_fault_handler ()
 { 
 	// pidin, pagein, inbuf: for the page with PF, needs to be brought into mem 
@@ -575,36 +555,22 @@ void page_fault_handler ()
   // inbuf and outbuf are the actual memory page content
   /*=======================^From original file*========================================*/
   // context switch On a page fault, the state of the faulting program is saved and the O.S.takes over
-	//via process.c (TODO)
-	int frame = get_free_frame();
-	if (frame == nullIndex) {//no free frames
-		//get the lowest age frame
-		frame=select_agest_frame();
-		//need to identify the pid of the frame being swapped out
-		int pidout = memFrame[frame].pid;
-		int pageout = memFrame[frame].page;
-
-		if (memFrame[frame].dirty == dirtyFrame) {
-			// if the frame is dirty, insert a write request to swapQ 
-			//buf will be the contents of the frame in memory
-			//mType outbuf = (mType *)malloc(pageSize * sizeof(mType));
-			//mType outbuf = Memory[frame * pageSize];
-			int j = 0;
-			mType outbuf[pageSize];
-			for (int i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
-				outbuf[j] = Memory[i];
-				j++;
-			}
-			insert_swapQ(pidout, pageout, (unsigned *) outbuf, actWrite, Nothing);
-		}
-		//else since the frame isn't dirty, we don't need to write back to swapQ
-	}
+	// via process.c (TODO)
+	// get_free_frame should be called only once, upon load to memory
+  // the select_agest_frame should also be in load_page_to_memory
+  // SO what does this do? Basically it just sends the page request to swapQ
+  // Then load_page_to_memory does its best to load the page, and swap out if needed
+	
 	// update the frame metadata and the page tables of the involved processes
-	int pagein = (CPU.IRoperand) / pageSize;
+  int pagein = CPU.IRoperand;
+  if(CPU.IRopcode == OPload || CPU.IRopcode == OPstore){
+    pagein += CPU.MDbase;
+  }
+  printf("pagein = %d\n", pagein);
+	pagein = pagein / pageSize;
 	int pidin = CPU.Pid;
+  update_process_pagetable(CPU.Pid, pagein, pendingPage);
 	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
-	update_frame_info(frame, CPU.Pid, pagein);
-	update_process_pagetable(CPU.Pid, pagein, frame);
 }
 
 // scan the memory and update the age field of each frame

@@ -79,7 +79,10 @@ void fetch_instruction ()
 { int mret;
   mret = get_instruction (CPU.PC);
   if (mret == mError) CPU.exeStatus = eError;
-  else if (mret == mPFault) CPU.exeStatus = ePFault;
+  else if (mret == mPFault) {
+    printf("page fault please?\n");
+    CPU.exeStatus = ePFault;
+  }
   else // fetch data, but exclude OPend and OPsleep, which has no data
        // also exclude OPstore, which stores data, not gets data
     if (CPU.IRopcode != OPend && CPU.IRopcode != OPsleep
@@ -123,11 +126,19 @@ void execute_instruction ()
       break;
     case OPstore:
       // *** ADD CODE for the instruction
-      put_data (CPU.IRoperand); 
+      CPU.MBR = CPU.AC;
+      mret = put_data (CPU.IRoperand); 
+      //must handle the case if put_data is pagefault
+      printf("mret: %d", mret);
+      if(mret == mPFault){
+        CPU.exeStatus = ePFault;
+        set_interrupt(pFaultException);
+      }
       break;
     case OPprint:
       // *** ADD CODE for the instruction
       {
+        get_data(CPU.IRoperand);
         char* str = (char*)malloc(16 * sizeof(char));
         sprintf(str, "%f", CPU.MBR);
         insert_termio(CPU.Pid, str, regularIO);
@@ -157,13 +168,15 @@ void cpu_execution ()
   while (CPU.exeStatus == eRun)
   { fetch_instruction ();
     if (Debug) { printf ("Fetched: "); dump_registers (); }
-    if (CPU.exeStatus == eRun)
-    { execute_instruction ();
+    if (CPU.exeStatus == eRun){ 
+      execute_instruction ();
+      printf("CPU.exeStatus = %d\n", CPU.exeStatus);
       // if it is eError or eEnd, does not matter
       // if it is page fault, then AC, PC should not be changed
       // because the instruction should be re-executed
       // so only execute if it is eRun
       if (CPU.exeStatus != ePFault) CPU.PC++;
+      else printf("why is pc getting upped?\n");
         // the put_data may change exeStatus, need to check again
         // if it is ePFault, then data has not been put in memory
         // => need to set back PC so that instruction will be re-executed

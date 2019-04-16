@@ -119,24 +119,41 @@ int load_pages_to_memory (int pid, int numpages)
   // ask swap.c to place the process to ready queue only after the last load
   // do not forget to update the page table of the process
   // this function has some similarity with page fault handler
-  int k, j, base;
-  for(k = 0; k < numpages-1; k++){
-    // NULL is passed for buf, since swap will have to take care of the loading into memory
-    // if I am to understand her code better
-    update_process_pagetable(pid, k, pendingPage);
-    insert_swapQ(pid, k, NULL, actRead, Nothing); 
-    // update appropriate page to pending
-  }
+  int k, j;
 
-  if(numpages > 0){
-    // update last page to pending as well
+  // if this is true, load everything
+  if(numpages < loadPpages){
+    for(k = 0; k < numpages-1; k++){
+      update_process_pagetable(pid, k, pendingPage);
+      insert_swapQ(pid, k, NULL, actRead, Nothing); 
+    }
     update_process_pagetable(pid, k, pendingPage);
     insert_swapQ(pid, k, NULL, actRead, toReady); 
-  }
+  } else if(loadPpages == 1){
 
-  // TODO: Let's consider instead of int numpages, loading the 1st page of instructions 
-  // and 1st page of data, just a thought.
-  //finding the first page of instructions is easy. finding the first page of data is not
+  } else {
+    // Load loadPpages - 1 pages of instructions
+    for(k = 0; k < loadPpages-1; k++){
+      // NULL is passed for buf, since swap will have to take care of the loading into memory
+      update_process_pagetable(pid, k, pendingPage);
+      insert_swapQ(pid, k, NULL, actRead, Nothing);
+      // update appropriate page to pending
+    }
+
+    // Then load 1 data page
+    // If the datapage has been loaded from the previous for loop, just add another data page
+    if(loadPpages > 1){
+      j = PCB[pid]->MDbase / pageSize;
+      // update last page to pending as well
+      if(j <= k){
+        update_process_pagetable(pid, k, pendingPage);
+        insert_swapQ(pid, k, NULL, actRead, toReady);
+      } else {
+        update_process_pagetable(pid, j, pendingPage);
+        insert_swapQ(pid, j, NULL, actRead, toReady);
+      }
+    }
+  }
   
   return progNormal;
 }

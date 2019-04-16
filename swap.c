@@ -71,7 +71,6 @@ int write_swap_page (int pid, int page, unsigned *buf)
   int ret = lseek (diskfd, location, SEEK_SET);
   if (ret < 0) perror ("Error lseek in write: \n");
   int retsize = write (diskfd, buf, pagedataSize);
-  printf("wrote %d bytes\n", retsize);
   if (retsize != pagedataSize) 
     { printf ("Error: Disk write returned incorrect size: %d\n", retsize); 
       exit(-1);
@@ -244,11 +243,14 @@ void *process_swapQ ()
         //read from swap space
           read_swap_page(node->pid, node->page, node->buf);
           load_page_to_memory(node->pid,node->page, node->buf);
+          //pcb pttbl will be set in paging instead.
         }
         break;
 			case actWrite: {
 				//write to swap space
 				write_swap_page(node->pid, node->page,node->buf);
+        //don't forget to tell pcb that the frame is now on disk space
+        PCB[node->pid]->PTptr[node->page] = diskPage;
         }
         break;
 			default:
