@@ -97,6 +97,7 @@ void handle_one_termio ()
       if (node->type != endIO)
       { insert_endWait_process (node->pid);
         set_interrupt (endWaitInterrupt);
+        printf("---------------------------------------------------------------------------------\n");
       }   // if it is the endIO type, then job done, just clean termio queue
 
       if (Debug) printf ("Remove term queue %d %s\n", node->pid, node->str);
@@ -120,7 +121,7 @@ void terminal_output (pid, outstr)
 int pid;
 char *outstr;
 {
-  fprintf (fterm, "%s\n", outstr);
+  fprintf (fterm, "pid %d: %s\n", pid, outstr);
   fflush (fterm);
   usleep (termPrintTime);
 }

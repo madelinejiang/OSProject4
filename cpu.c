@@ -63,7 +63,12 @@ void handle_interrupt ()
 
     if ((CPU.interruptV & pFaultException) == pFaultException){
       printf("gotta handle that page fault\n");
-      page_fault_handler();
+      if((CPU.interruptV & pFaultInstruction) == pFaultInstruction){
+        page_fault_handler(pFaultInstruction);
+        clear_interrupt(pFaultInstruction);
+      } else {
+        page_fault_handler(0);
+      }
       clear_interrupt(pFaultException);
     }
 
@@ -80,8 +85,8 @@ void fetch_instruction ()
   mret = get_instruction (CPU.PC);
   if (mret == mError) CPU.exeStatus = eError;
   else if (mret == mPFault) {
-    printf("page fault please?\n");
     CPU.exeStatus = ePFault;
+    set_interrupt(pFaultInstruction);
   }
   else // fetch data, but exclude OPend and OPsleep, which has no data
        // also exclude OPstore, which stores data, not gets data
@@ -129,10 +134,8 @@ void execute_instruction ()
       CPU.MBR = CPU.AC;
       mret = put_data (CPU.IRoperand); 
       //must handle the case if put_data is pagefault
-      printf("mret: %d", mret);
       if(mret == mPFault){
         CPU.exeStatus = ePFault;
-        set_interrupt(pFaultException);
       }
       break;
     case OPprint:
@@ -142,6 +145,7 @@ void execute_instruction ()
         char* str = (char*)malloc(16 * sizeof(char));
         sprintf(str, "%f", CPU.MBR);
         insert_termio(CPU.Pid, str, regularIO);
+        CPU.exeStatus = eWait;
       }
       break;
     case OPsleep:
@@ -170,18 +174,20 @@ void cpu_execution ()
     if (Debug) { printf ("Fetched: "); dump_registers (); }
     if (CPU.exeStatus == eRun){ 
       execute_instruction ();
-      printf("CPU.exeStatus = %d\n", CPU.exeStatus);
       // if it is eError or eEnd, does not matter
       // if it is page fault, then AC, PC should not be changed
       // because the instruction should be re-executed
       // so only execute if it is eRun
       if (CPU.exeStatus != ePFault) CPU.PC++;
-      else printf("why is pc getting upped?\n");
         // the put_data may change exeStatus, need to check again
         // if it is ePFault, then data has not been put in memory
         // => need to set back PC so that instruction will be re-executed
         // no other instruction will cause problem and execution is done
       if (Debug) { printf ("Executed: "); dump_registers (); }
+    }
+
+    if(CPU.exeStatus == ePFault){
+      set_interrupt(pFaultException);
     }
 
     if (CPU.interruptV != 0) handle_interrupt ();

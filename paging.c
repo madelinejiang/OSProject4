@@ -334,7 +334,6 @@ int select_agest_frame ()
 // if there is no free frame, then get one frame with the lowest age
 // this func always returns a frame, either from free list or get one with lowest age
 int get_free_frame (){ 
-  printf("freefHead @ start of get_free_frame() is %d\n", freeFhead);
   int freeFrameIndex;
   // if the there is a head, then there are free pages
   // If freeFhead is 0, then we've done something very wrong somewhere
@@ -352,7 +351,6 @@ int get_free_frame (){
       freeFtail = nullIndex;
     }
     memFrame[freeFrameIndex].next = nullIndex;
-    printf("freefHead @ before return of get_free_frame() is %d\n", freeFhead);
     return freeFrameIndex;
   } else {
     // we are assuming that a free frame will need to be used
@@ -547,7 +545,7 @@ void dump_process_memory (int pid)
 #define OPload 2
 #define OPstore 6
 
-void page_fault_handler ()
+void page_fault_handler (unsigned pFaultTypeBit)
 { 
 	// pidin, pagein, inbuf: for the page with PF, needs to be brought into mem 
   // pidout, pageout, outbuf: for the page to be swapped out (write to disk)
@@ -562,11 +560,12 @@ void page_fault_handler ()
   // Then load_page_to_memory does its best to load the page, and swap out if needed
 	
 	// update the frame metadata and the page tables of the involved processes
-  int pagein = CPU.IRoperand;
-  if(CPU.IRopcode == OPload || CPU.IRopcode == OPstore){
-    pagein += CPU.MDbase;
+  int pagein;
+  if(pFaultTypeBit == pFaultInstruction){
+    pagein = CPU.PC;
+  } else {
+    pagein = CPU.MDbase + CPU.IRoperand;
   }
-  printf("pagein = %d\n", pagein);
 	pagein = pagein / pageSize;
 	int pidin = CPU.Pid;
   update_process_pagetable(CPU.Pid, pagein, pendingPage);

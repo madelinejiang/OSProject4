@@ -127,6 +127,7 @@ struct
 #define ageInterrupt 2     // for age scan
 #define endWaitInterrupt 4  // for any IO completion, including page fault
 #define pFaultException 8   // page fault exception
+#define pFaultInstruction 16
         // before setting endWait, caller should add the pid to endWait list
 
 // define exeStatus in CPU structure
