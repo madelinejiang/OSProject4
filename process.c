@@ -202,8 +202,8 @@ void dump_PCB (int pid)
 }
 void dump_entries()
 {
-	for (pid = idlePid + 1; pid < currentPid; pid++)
-		if (PCB[pid] != NULL) {}
+	for (int pid = idlePid + 1; pid < currentPid; pid++)
+		if (PCB[pid] != NULL) {
 			printf("********************Page Table Dump for Process %d\n", pid);
 			dump_process_pagetable(pid);
 		}
