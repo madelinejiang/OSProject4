@@ -57,7 +57,7 @@ ReadyNode *readyTail = NULL;
 void insert_ready_process (pid)
 int pid;
 { ReadyNode *node;
-    printf("inserting into readyQ\n");
+//* printf("inserting into readyQ\n");
   node = (ReadyNode *) malloc (sizeof (ReadyNode));
   node->pid = pid;
   node->next = NULL;
@@ -65,7 +65,7 @@ int pid;
     { readyTail = node; readyHead = node; }
   else // insert to tail
     { readyTail->next = node; readyTail = node; }
-    printf("inserted into readyQ\n");
+//* printf("inserted into readyQ\n");
 }
 
 int get_ready_process ()
@@ -197,8 +197,16 @@ void dump_PCB (int pid)
   printf ("PC = %d\n", PCB[pid]->PC);
   printf ("AC = "mdOutFormat"\n", PCB[pid]->AC);
   printf ("MDbase = %d\n", PCB[pid]->MDbase);
-  printf ("PTptr = %x\n", PCB[pid]->PTptr);
+  //printf ("PTptr addr = %x\n", PCB[pid]->PTptr);
   printf ("exeStatus = %d\n", PCB[pid]->exeStatus);
+}
+void dump_entries()
+{
+	for (pid = idlePid + 1; pid < currentPid; pid++)
+		if (PCB[pid] != NULL) {}
+			printf("********************Page Table Dump for Process %d\n", pid);
+			dump_process_pagetable(pid);
+		}
 }
 
 void dump_PCB_list ()
@@ -217,7 +225,6 @@ void dump_PCB_memory ()
   for (pid=idlePid+1; pid<currentPid; pid++)
     if (PCB[pid] != NULL) dump_process_memory (pid);
 }
-
 
 //=========================================================================
 // process management
@@ -248,8 +255,7 @@ void end_process (int pid) {
     sprintf (str, "Process %d had encountered error in execution!!!\n", pid);
   }
   else  // was eEnd
-  { // printf ("Process %d had completed successfully: Time=%d, PF=%d\n",
-    //          pid, PCB[pid]->timeUsed, PCB[pid]->numPF);
+  { 
     sprintf (str, "Process %d had completed successfully: Time=%d, PF=%d\n",
              pid, PCB[pid]->timeUsed, PCB[pid]->numPF);
   }
@@ -259,7 +265,7 @@ void end_process (int pid) {
   numUserProcess--;
   clean_process (pid); 
     // cpu will clean up process pid without waiting for printing to finish
-    // so, io should not access PCB[pid] for end process printing
+    // so, io should not access PCB[pid] for end process printing  
 }
 
 // this function initializes the idle process
@@ -300,6 +306,10 @@ int submit_process (char *fname)
   // Will change once we are confident everything works before demand paging
   if ( ((numFrames-OSpages)/(numUserProcess+1)) < 2 )
     printf ("\aToo many processes => they may not execute due to page faults\n");
+  else if (fopen(fname, "r") == NULL) {
+	  perror("Invalid file name\n");
+	  return (-1);
+  }
   else
   { pid = new_PCB ();
     if (pid > idlePid)
@@ -327,7 +337,9 @@ int submit_process (char *fname)
 void execute_process ()
 { int pid, intime;
   genericPtr event;
+ //* printf("execute_process() getting ready process\n");
   pid = get_ready_process ();
+ //* printf("got ready process\n");
   if (pid != nullReady)
   { 
     // *** ADD CODE to perform context switch and call cpu_execution
@@ -336,7 +348,9 @@ void execute_process ()
     intime = CPU.numCycles;
     CPU.exeStatus = eRun;
     event = add_timer (cpuQuantum, CPU.Pid, actTQinterrupt, oneTimeTimer);
+//* printf("executed cpu\n");
     cpu_execution ();
+//* printf("executed cpu\n");
     intime = CPU.numCycles - intime;
     if (CPU.exeStatus == eReady){
       context_out(pid, intime, noPfault);
@@ -344,6 +358,7 @@ void execute_process ()
     }
     else if (CPU.exeStatus == ePFault || CPU.exeStatus == eWait) {
       context_out(pid, intime, Pfault);
+	  if (CPU.exeStatus==ePFault) printf("page fault detected in execute_process\n");
       deactivate_timer (event);
     }
     else // CPU.exeStatus == eError or eEnd

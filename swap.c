@@ -93,7 +93,7 @@ int dump_process_swap_page (int pid, int page)
   int ret = lseek (diskfd, location, SEEK_SET);
   //printf ("loc %d %d %d, size %d\n", pid, page, location, pagedataSize);
   if (ret < 0) perror ("Error lseek in dump: \n");
-  char *buf = (char *) malloc(pagedataSize);
+  unsigned *buf = (unsigned *) malloc(pagedataSize*sizeof(unsigned*));
   int retsize = read (diskfd, buf, pagedataSize);
   if (retsize != pagedataSize) 
   { printf ("Error: Disk dump read incorrect size: %d\n", retsize); 
@@ -101,8 +101,9 @@ int dump_process_swap_page (int pid, int page)
   }
   printf ("Content of process %d page %d:\n", pid, page);
   int k;
-  for (k=0; k<pageSize; k++) printf ("%d ", buf[k]);
-  printf ("\n");
+  for (k = 0; k < pageSize; k++) { 
+	  printf("DISK @ - 0x%08x| Data - 0x%08x\n", k, buf[k]);
+  }
 
   //we should return something better than just 0
   return 0;

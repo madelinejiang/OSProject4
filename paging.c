@@ -88,7 +88,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
 
   //after we get the pageIndex, check the PT and return appropriate result
   int frame = CPU.PTptr[pageIndex];
-  printf("page checked out to be frame: %d\n", frame);
+  //*  printf("page checked out to be frame: %d\n", frame);
   switch(frame){
     case nullPage:
       // return this since this is a access violation
@@ -200,7 +200,7 @@ void dump_one_frame (int findex) {
   printf("************ Dump contents of frame %d\n", findex);
   
   for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
-    printf("Memory @ - 0x%08x| Data - 0x%04x\n", i, Memory[i]);
+    printf("Memory @ - 0x%08x| Data - 0x%08x\n", i, Memory[i]);
   }
 }
 
@@ -350,7 +350,7 @@ int get_free_frame (){
       freeFhead = nullIndex;
       freeFtail = nullIndex;
     }
-    memFrame[freeFrameIndex].next = nullIndex;
+	memFrame[freeFrameIndex].next = nullIndex;
     return freeFrameIndex;
   } else {
     // we are assuming that a free frame will need to be used
@@ -370,6 +370,7 @@ int get_free_frame (){
 
 int load_page_to_memory(int pid, int page, unsigned *buf){
   int frame = get_free_frame();
+  printf("Retrieved frame %d for requested pid %d page %d \n", frame, pid, page);
   if (frame == nullIndex) { //no free frames
 		//get the lowest age frame
 		frame = select_agest_frame();
@@ -506,9 +507,24 @@ void dump_process_pagetable (int pid)
 { 
   // print page table entries of process pid
   printf ("************** Page Table for Process pid: %d\n", pid);
-  int i;
-  for (i=0; i<maxPpages; i++) { 
-    printf ("Page %d @ %d: ", i, PCB[pid]->PTptr[i]); 
+  int i, frame;
+  for (i = 0; i < maxPpages; i++) {
+	  frame = PCB[pid]->PTptr[i];
+	  switch (frame) {
+	  case nullPage:
+		  // break out of for loop by setting i to maxPpages
+		  i = maxPpages;
+		  break;
+	  case diskPage:
+		  printf("Page %d is in DISK\n", i);
+		  break;
+	  case pendingPage:
+		  printf("Page %d is in SWAPQ\n", i);
+		  break;
+	  default:
+		  printf("Page %d is at 0x%08x\n",i,frame*pageSize);
+		  break;
+	  }
   }
 
 }
@@ -527,11 +543,17 @@ void dump_process_memory (int pid)
         break;
       case diskPage:
         printf("Page %d is in DISK\n", i);
+		dump_process_swap_page(pid,i);
         break;
       case pendingPage:
         printf("Page %d is in SWAPQ\n", i);
+
         break;
       default:
+		  printf("Page %d is in MEM @frame %d******************\n", i, frame);
+		  printf("Metadata: age=%x", memFrame[frame].age);
+		  printf("dirty=%d free=%d\n",
+			  memFrame[frame].dirty, memFrame[frame].free);
         dump_one_frame(frame);
         break;
     }
@@ -554,21 +576,24 @@ void page_fault_handler (unsigned pFaultTypeBit)
   /*=======================^From original file*========================================*/
   // context switch On a page fault, the state of the faulting program is saved and the O.S.takes over
 	// via process.c (TODO)
+
+
 	// get_free_frame should be called only once, upon load to memory
   // the select_agest_frame should also be in load_page_to_memory
   // SO what does this do? Basically it just sends the page request to swapQ
   // Then load_page_to_memory does its best to load the page, and swap out if needed
 	
 	// update the frame metadata and the page tables of the involved processes
-  int pagein;
-  if(pFaultTypeBit == pFaultInstruction){
-    pagein = CPU.PC;
-  } else {
-    pagein = CPU.MDbase + CPU.IRoperand;
-  }
+	int pagein;
+	if (pFaultTypeBit == pFaultInstruction) {
+		pagein = CPU.PC;
+	}
+	else {
+		pagein = CPU.MDbase + CPU.IRoperand;
+	}
 	pagein = pagein / pageSize;
 	int pidin = CPU.Pid;
-  update_process_pagetable(CPU.Pid, pagein, pendingPage);
+	update_process_pagetable(CPU.Pid, pagein, pendingPage);
 	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
 }
 

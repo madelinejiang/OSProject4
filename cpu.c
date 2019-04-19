@@ -17,6 +17,7 @@ void initialize_cpu ()
 { // Generally, cpu goes to a fix location to fetch and execute OS
   CPU.interruptV = 0;
   CPU.numCycles = 0;
+  int pFaultType = noInstrPFlag;
 }
 
 void dump_registers ()
@@ -38,16 +39,19 @@ void set_interrupt (unsigned bit)
 void clear_interrupt (unsigned bit)
 { 
   unsigned negbit = -bit - 1;
-  printf ("IV is %x, ", CPU.interruptV);
+ //*printf ("IV is %x, ", CPU.interruptV);
   CPU.interruptV = CPU.interruptV & negbit;
-  printf ("after clear is %x\n", CPU.interruptV);
+ //*printf ("after clear is %x\n", CPU.interruptV);
 }
 
 void handle_interrupt ()
 {
-  if (Debug) 
-    printf ("Interrupt handler: pid = %d; interrupt = %x; exeStatus = %d\n",
-            CPU.Pid, CPU.interruptV, CPU.exeStatus); 
+	if (Debug) {
+		printf("\n+++++++++++++++++++++++++++++++++++++++++++++++\n");
+		printf("Interrupt handler: pid = %d; interrupt = %x; exeStatus = %d\n",
+			CPU.Pid, CPU.interruptV, CPU.exeStatus);
+		printf("\n+++++++++++++++++++++++++++++++++++++++++++++++\n");
+	}
   while (CPU.interruptV != 0)
   { if ((CPU.interruptV & endWaitInterrupt) == endWaitInterrupt)
     { endWait_moveto_ready ();  
@@ -56,20 +60,22 @@ void handle_interrupt ()
     }
 
     if ((CPU.interruptV & ageInterrupt) == ageInterrupt){
-      printf("age wait interrupt handled! ... NOT\n");
+      //*printf("age wait interrupt handled! ... NOT\n");
       memory_agescan();
       clear_interrupt(ageInterrupt);
     }
 
     if ((CPU.interruptV & pFaultException) == pFaultException){
-      printf("gotta handle that page fault\n");
-      if((CPU.interruptV & pFaultInstruction) == pFaultInstruction){
-        page_fault_handler(pFaultInstruction);
-        clear_interrupt(pFaultInstruction);
-      } else {
-        page_fault_handler(0);
-      }
-      clear_interrupt(pFaultException);
+      printf("handle_interrupt detected page fault\n");
+      if((CPU.interruptV&pFaultInstruction)==pFaultInstruction){
+		  page_fault_handler(pFaultInstruction);
+		  clear_interrupt(pFaultInstruction);
+	  }
+	  else {
+		  page_fault_handler(0);
+	  }
+      
+	  clear_interrupt(pFaultException);
     }
 
     // Done last in case exeStatus is changed for another reason
@@ -86,7 +92,7 @@ void fetch_instruction ()
   if (mret == mError) CPU.exeStatus = eError;
   else if (mret == mPFault) {
     CPU.exeStatus = ePFault;
-    set_interrupt(pFaultInstruction);
+	set_interrupt(pFaultInstruction);
   }
   else // fetch data, but exclude OPend and OPsleep, which has no data
        // also exclude OPstore, which stores data, not gets data
@@ -94,11 +100,16 @@ void fetch_instruction ()
         && CPU.IRopcode != OPstore)
     { mret = get_data (CPU.IRoperand); 
       if (mret == mError) CPU.exeStatus = eError;
-      else if (mret == mPFault) CPU.exeStatus = ePFault;
+	  else if (mret == mPFault) { 
+		  CPU.exeStatus = ePFault; printf("page fault detected after get_data\n");  
+	  }
       else if (CPU.IRopcode == OPifgo)
       { mret = get_instruction (CPU.PC+1);
         if (mret == mError) CPU.exeStatus = eError;
-        else if (mret == mPFault) CPU.exeStatus = ePFault;
+		else if (mret == mPFault) { 
+			printf("page fault detected in OPifgo\n");
+			CPU.exeStatus = ePFault; 
+		}
         else { CPU.PC++; CPU.IRopcode = OPifgo; }
         // ifgo is different from other instructions, it has two words
         //   test variable is in memory, memory addr is in the 1st word
@@ -145,7 +156,7 @@ void execute_instruction ()
         char* str = (char*)malloc(16 * sizeof(char));
         sprintf(str, "%f", CPU.MBR);
         insert_termio(CPU.Pid, str, regularIO);
-        CPU.exeStatus = eWait;
+		CPU.exeStatus = eWait;
       }
       break;
     case OPsleep:
@@ -167,29 +178,29 @@ void execute_instruction ()
 
 void cpu_execution ()
 { int mret;
-
   // perform all memory fetches, analyze memory conditions all here
   while (CPU.exeStatus == eRun)
   { fetch_instruction ();
-    if (Debug) { printf ("Fetched: "); dump_registers (); }
+  if (Debug) { printf("Fetched: "); dump_registers();printf("CPU.exeStatus = %d\n", CPU.exeStatus);}
     if (CPU.exeStatus == eRun){ 
       execute_instruction ();
+      printf("CPU.exeStatus = %d\n", CPU.exeStatus);
       // if it is eError or eEnd, does not matter
       // if it is page fault, then AC, PC should not be changed
       // because the instruction should be re-executed
       // so only execute if it is eRun
       if (CPU.exeStatus != ePFault) CPU.PC++;
+     //*else printf("why is pc getting upped?\n");
+
         // the put_data may change exeStatus, need to check again
         // if it is ePFault, then data has not been put in memory
         // => need to set back PC so that instruction will be re-executed
         // no other instruction will cause problem and execution is done
       if (Debug) { printf ("Executed: "); dump_registers (); }
     }
-
-    if(CPU.exeStatus == ePFault){
-      set_interrupt(pFaultException);
-    }
-
+	if (CPU.exeStatus == ePFault) {
+		set_interrupt(pFaultException);
+	}
     if (CPU.interruptV != 0) handle_interrupt ();
     advance_clock ();
       // since we don't have clock, we use instruction cycle as the clock
