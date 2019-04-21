@@ -60,7 +60,7 @@ void handle_interrupt ()
     }
 
     if ((CPU.interruptV & ageInterrupt) == ageInterrupt){
-      //*printf("age wait interrupt handled! ... NOT\n");
+      printf("age wait interrupt ... NOT\n");
       memory_agescan();
       clear_interrupt(ageInterrupt);
     }
@@ -180,8 +180,10 @@ void cpu_execution ()
 { int mret;
   // perform all memory fetches, analyze memory conditions all here
   while (CPU.exeStatus == eRun)
-  { fetch_instruction ();
-  if (Debug) { printf("Fetched: "); dump_registers();printf("CPU.exeStatus = %d\n", CPU.exeStatus);}
+  { //age all the frames
+	  age_all_frames();
+	  fetch_instruction ();
+  if (Debug) { printf("Fetched: "); dump_registers();printf("CPU.exeStatus before execution= %d\n", CPU.exeStatus);}
     if (CPU.exeStatus == eRun){ 
       execute_instruction ();
       printf("CPU.exeStatus = %d\n", CPU.exeStatus);
@@ -202,10 +204,12 @@ void cpu_execution ()
 		set_interrupt(pFaultException);
 	}
     if (CPU.interruptV != 0) handle_interrupt ();
+
     advance_clock ();
       // since we don't have clock, we use instruction cycle as the clock
       // no matter whether there is a page fault or an error,
       // should handle clock increment and interrupt
+	dump_memoryframe_info();
   }
 }
 

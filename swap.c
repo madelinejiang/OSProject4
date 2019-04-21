@@ -101,8 +101,9 @@ int dump_process_swap_page (int pid, int page)
   }
   printf ("Content of process %d page %d:\n", pid, page);
   int k;
+  int loc= (pid - 2) * PswapSize + page * pageSize;
   for (k = 0; k < pageSize; k++) { 
-	  printf("DISK @ - 0x%08x| Data - 0x%08x\n", k, buf[k]);
+	  printf("DISK @ - 0x%08x| Data - 0x%08x\n", k+loc, buf[k]);
   }
 
   //we should return something better than just 0
@@ -251,7 +252,7 @@ void *process_swapQ ()
 				//write to swap space
 				write_swap_page(node->pid, node->page,node->buf);
         //don't forget to tell pcb that the frame is now on disk space
-        PCB[node->pid]->PTptr[node->page] = diskPage;
+				PCB[node->pid]->PTptr[node->page] = diskPage;
         }
         break;
 			default:

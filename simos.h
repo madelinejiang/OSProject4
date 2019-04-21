@@ -77,6 +77,7 @@ void initialize_memory_manager ();  // called by system.c
 void dump_memoryframe_info();
 void dump_free_list();
 void dump_memory();
+void remove_frame_from_free(int frame);
 
 
 // memory management functions
@@ -98,6 +99,8 @@ int load_page_to_memory(int pid, int page, unsigned *buf);
 
 // by cpu.c
 void page_fault_handler ();
+void age_all_frames();
+
 #define noInstrPFlag 0
 #define instrPFlag 1
 int pFaultType;

@@ -152,8 +152,11 @@ int time, pid, action, recurperiod; // time is from current time
     event->act = action;
     event->recurP = recurperiod;
     insert_event (event);
-    if (Debug) printf ("Add timer: time=%d, pid=%d, action=%d, recurP=%d\n",
-                       event->time, event->pid, event->act, event->recurP);
+	if (Debug) {
+		printf("\n===============================================\n");
+		printf("Add timer : time = %d, pid = %d, action = %d, recurP = %d\n", event->time, event->pid, event->act, event->recurP);
+		printf("\n===============================================\n");
+	}
     return ((genericPtr) event);
       // to not expose the eventNode structure, a casted pointer is returned
   }
@@ -183,7 +186,7 @@ void check_timer ()
       case actNull:
         if (clockDebug)
           printf ("Event: time=%d, pid=%d, action=%d, recurP=%d\n",
-                  event->time, event->pid, event->act, event->recurP);
+			  event->time, event->pid, event->act, event->recurP);
         break;
       default:
         printf ("Encountering an illegitimate action code\n");
