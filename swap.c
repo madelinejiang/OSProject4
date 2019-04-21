@@ -238,57 +238,96 @@ void *process_swapQ ()
 
 		//prepare for the disk action
 		//
-		switch (node->act) {
-			case actRead: { 
-        //read from swap space
-          read_swap_page(node->pid, node->page, node->buf);
-          load_page_to_memory(node->pid,node->page, node->buf);
-          //pcb pttbl will be set in paging instead.
-        }
-        break;
-			case actWrite: {
-				//write to swap space
-				write_swap_page(node->pid, node->page,node->buf);
-        //don't forget to tell pcb that the frame is now on disk space
-        PCB[node->pid]->PTptr[node->page] = diskPage;
-        }
-        break;
-			default:
-			  break;
-		}
+    if(node->act == actRead) {
+      //read from swap space
+      read_swap_page(node->pid, node->page, node->buf);
+      //pcb pttbl will be set in paging instead.
+      switch (node->finishact) {
+        case Nothing:
+        load_page_to_memory(node->pid,node->page, node->buf, Nothing);
+          break;
+        case freeBuf:
+          //should only occur for write not read
+          printf("ERROR: Attempt to free buffer during read\n");
+          break;
+        case toReady:
+          load_page_to_memory(node->pid,node->page, node->buf, toReady);
+          break;
+        case Both:
+          printf("ERROR: Should not use both post action for actRead\n");
+          break;
+        default:
+          break; 
+      }
+      break;
+    } else if(node->act == actWrite) {
+      
+      //write to swap space
+      write_swap_page(node->pid, node->page,node->buf);
+      //don't forget to tell pcb that the frame is now on disk space
+      if(PCB[node->pid]->PTptr[node->page] > nullIndex){
+        // greater than nullIndex, cuz I mark a page is pending when loading program
+        // I don't want program to move the frame to free queue at that time
+        // PTptr only has nullIndex on program load
+        addto_free_frame( PCB[node->pid]->PTptr[node->page], nullPage);
+      }
 
-//================================================//
-
-		switch (node->finishact) {
-			case Nothing:
-				break;
-			case freeBuf:
-				if (node->act==actRead) {
-					//should only occur for write not read
-					printf("ERROR: Attempt to free buffer during read\n");
-				}
-				else {
-					free(node->buf);
-				}
-				break;
-			case toReady:
-        if(node->act == actRead){
-          insert_ready_process(node->pid);
-        } else {
+      switch (node->finishact) {
+        case Nothing:
+          break;
+        case freeBuf:
+                printf("hi1\n");
+            free(node->buf);
+          break;
+        case toReady:
           printf("ERROR: Cannot place a process to ReadyQ on actWrite\n");
-        }
-				break;
-			case Both:
-				free(node->buf);
-				insert_ready_process(node->pid);
-				break;
-			default:
-				break;
+          break;
+        case Both:
+          printf("ERROR: Should not use Both post action\n");
+          break;
+        default:
+        printf("hi3\n");
+          break;
+      }
+              printf("hi2\n");
+      break;
+    } else {
+      printf("ERROR: improper value for act variable passed @process_swapQ() ");
+      break;
+    }
 
-		}
-		free(node);
-		node = NULL;
-		sem_post(&swapq_mutex);
+// //================================================//
+
+// 		switch (node->finishact) {
+// 			case Nothing:
+// 				break;
+// 			case freeBuf:
+// 				if (node->act==actRead) {
+// 					//should only occur for write not read
+// 					printf("ERROR: Attempt to free buffer during read\n");
+// 				}
+// 				else {
+// 					free(node->buf);
+// 				}
+// 				break;
+// 			case toReady:
+//         if(node->act == actRead){
+//           insert_ready_process(node->pid);
+//         } else {
+//           printf("ERROR: Cannot place a process to ReadyQ on actWrite\n");
+//         }
+// 				break;
+// 			case Both:
+// 				free(node->buf);
+// 				insert_ready_process(node->pid);
+// 				break;
+// 			default:
+// 				break;
+
+// 		}
+    free(node);
+    node = NULL;
+    sem_post(&swapq_mutex);
 	}
 }
 

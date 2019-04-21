@@ -104,9 +104,10 @@ int load_process_to_swap (int pid, char *fname, int *dataOffset)
         page[j].mInstr = 0;
       }
     }
+    update_process_pagetable(pid, i, pendingPage);
     insert_swapQ(pid, i, (unsigned *)page, actWrite, freeBuf);
     loadedPages++;
-	  update_process_pagetable(pid, i, pendingPage);
+    printf("hit 1\n");
   }
   fclose(progFd);
   return loadedPages;

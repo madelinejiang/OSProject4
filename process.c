@@ -57,7 +57,7 @@ ReadyNode *readyTail = NULL;
 void insert_ready_process (pid)
 int pid;
 { ReadyNode *node;
-    printf("inserting into readyQ\n");
+    printf("inserting %d into readyQ\n", pid);
   node = (ReadyNode *) malloc (sizeof (ReadyNode));
   node->pid = pid;
   node->next = NULL;
@@ -65,7 +65,7 @@ int pid;
     { readyTail = node; readyHead = node; }
   else // insert to tail
     { readyTail->next = node; readyTail = node; }
-    printf("inserted into readyQ\n");
+    printf("inserted %d into readyQ\n", pid);
 }
 
 int get_ready_process ()
