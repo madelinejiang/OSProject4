@@ -252,7 +252,7 @@ void *process_swapQ ()
 				//write to swap space
 				write_swap_page(node->pid, node->page,node->buf);
         //don't forget to tell pcb that the frame is now on disk space
-				PCB[node->pid]->PTptr[node->page] = diskPage;
+        update_process_pagetable(node->pid, node->page, diskPage);
         }
         break;
 			default:

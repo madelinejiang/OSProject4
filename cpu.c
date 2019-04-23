@@ -60,13 +60,11 @@ void handle_interrupt ()
     }
 
     if ((CPU.interruptV & ageInterrupt) == ageInterrupt){
-      printf("age wait interrupt ... NOT\n");
       memory_agescan();
       clear_interrupt(ageInterrupt);
     }
 
     if ((CPU.interruptV & pFaultException) == pFaultException){
-      printf("handle_interrupt detected page fault\n");
       if((CPU.interruptV&pFaultInstruction)==pFaultInstruction){
 		  page_fault_handler(pFaultInstruction);
 		  clear_interrupt(pFaultInstruction);
@@ -181,10 +179,10 @@ void cpu_execution ()
   // perform all memory fetches, analyze memory conditions all here
   while (CPU.exeStatus == eRun)
   { //age all the frames
-	  age_all_frames();
+	  //age_all_frames();
 	  fetch_instruction ();
-  if (Debug) { printf("Fetched: "); dump_registers();printf("CPU.exeStatus before execution= %d\n", CPU.exeStatus);}
-    if (CPU.exeStatus == eRun){ 
+    if (Debug) { printf("Fetched: "); dump_registers();printf("CPU.exeStatus before execution= %d\n", CPU.exeStatus);}
+    if (CPU.exeStatus == eRun){
       execute_instruction ();
       printf("CPU.exeStatus = %d\n", CPU.exeStatus);
       // if it is eError or eEnd, does not matter
@@ -192,24 +190,24 @@ void cpu_execution ()
       // because the instruction should be re-executed
       // so only execute if it is eRun
       if (CPU.exeStatus != ePFault) CPU.PC++;
-     //*else printf("why is pc getting upped?\n");
+      //*else printf("why is pc getting upped?\n");
 
-        // the put_data may change exeStatus, need to check again
-        // if it is ePFault, then data has not been put in memory
-        // => need to set back PC so that instruction will be re-executed
-        // no other instruction will cause problem and execution is done
+      // the put_data may change exeStatus, need to check again
+      // if it is ePFault, then data has not been put in memory
+      // => need to set back PC so that instruction will be re-executed
+      // no other instruction will cause problem and execution is done
       if (Debug) { printf ("Executed: "); dump_registers (); }
     }
-	if (CPU.exeStatus == ePFault) {
-		set_interrupt(pFaultException);
-	}
+    if (CPU.exeStatus == ePFault) {
+      set_interrupt(pFaultException);
+    }
     if (CPU.interruptV != 0) handle_interrupt ();
 
     advance_clock ();
       // since we don't have clock, we use instruction cycle as the clock
       // no matter whether there is a page fault or an error,
       // should handle clock increment and interrupt
-	dump_memoryframe_info();
+    dump_memoryframe_info();
   }
 }
 

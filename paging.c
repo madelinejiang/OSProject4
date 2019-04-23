@@ -208,18 +208,16 @@ void direct_put_data (int findex, int offset, mdType data)
 // dump the content of one memory frame
 void dump_one_frame (int findex) { 
   int i;
+  FrameStruct frame = memFrame[findex];
   printf("************ Dump contents of frame %d\n", findex);
-  
+  if(frame.free == freeFrame)
+    printf("Frame not used by any process and is free\n");
+  else
+    printf("Frame used by process PID: %d\n", frame.pid);
+
   for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
     printf("Memory @ - 0x%08x| Data - 0x%08x\n", i, Memory[i]);
   }
-}
-
-void dump_memory ()
-{ int i;
-
-  printf ("************ Dump the entire memory\n");
-  for (i=0; i<numFrames; i++) dump_one_frame (i);
 }
 
 // above: dump memory content, below: only dump frame inforation
@@ -229,31 +227,58 @@ void dump_free_list ()
 { int i = freeFhead;
 
   printf ("******************** Free Frame List\n");
-
+  printf("Free Frame Queue/List: ");
   while(i > nullIndex){ 
-    printf ("Free Frame %d->", i);
+    printf ("%d->", i);
     i = memFrame[i].next;
   }
   printf("||\n");
 }
 
 void print_one_frameinfo (int indx)
-{ printf ("pid/page/age=%d,%d,%x, ",
-          memFrame[indx].pid, memFrame[indx].page, memFrame[indx].age);
-  printf ("dir/free/pin=%d/%d/%d, ",
-          memFrame[indx].dirty, memFrame[indx].free, memFrame[indx].pinned);
-  printf ("next/prev=%d,%d\n",
-          memFrame[indx].next, memFrame[indx].prev);
+{ FrameStruct frame = memFrame[indx];
+  printf ("pid/page = %d/%d\n", frame.pid, frame.page);
+  printf("\tage = %x\n", frame.age);
+  printf("\tFrame status: ");
+  if(frame.free == freeFrame){
+    printf("free\n");
+  } else {
+    printf("used/");
+    if(frame.dirty == dirtyFrame)
+      printf("dirty/");
+    else
+      printf("clean/");
+    
+    if(frame.pinned == pinnedFrame)
+      printf("pinned\n");
+    else
+      printf("unpinned\n");
+  }
+  // printf ("dir/free/pin=%d/%d/%d, ",
+  //         memFrame[indx].dirty, memFrame[indx].free, memFrame[indx].pinned);
+  // printf ("next/prev=%d,%d\n",
+  //         memFrame[indx].next, memFrame[indx].prev);
 }
 
 void dump_memoryframe_info ()
 { int i;
 
   printf ("******************** Memory Frame Metadata\n");
-  printf ("Memory frame head/tail: %d/%d\n", freeFhead, freeFtail);
-  for (i=OSpages; i<numFrames; i++)
-  { printf ("Frame %d: ", i); print_one_frameinfo (i); }
-  dump_free_list ();
+  // printf ("Memory frame head/tail: %d/%d\n", freeFhead, freeFtail);
+  for (i=OSpages; i<numFrames; i++){ 
+    printf ("Frame %d: ", i);
+    print_one_frameinfo (i); 
+  }
+}
+
+void dump_memory ()
+{ int i;
+  printf ("*************** Dumping the entire memory\n");
+  for (i=0; i<numFrames; i++) {
+    print_one_frameinfo(i);
+    dump_one_frame (i);
+  }
+  dump_free_list();
 }
 
 void  update_frame_info (findex, pid, page)
@@ -626,16 +651,16 @@ void dump_process_memory (int pid)
         break;
       case diskPage:
         printf("Page %d is in DISK\n", i);
-		dump_process_swap_page(pid,i);
+		    dump_process_swap_page(pid,i);
         break;
       case pendingPage:
         printf("Page %d is in SWAPQ\n", i);
         break;
       default:
-		  printf("Page %d is in MEM @frame %d******************\n", i, frame);
-		  printf("Metadata: age=%x", memFrame[frame].age);
-		  printf("dirty=%d free=%d\n",memFrame[frame].dirty, memFrame[frame].free);
-		  dump_one_frame(frame);
+        printf("Page %d is in MEM @frame %d******************\n", i, frame);
+        printf("Metadata: age=%x", memFrame[frame].age);
+        printf("dirty=%d free=%d\n",memFrame[frame].dirty, memFrame[frame].free);
+        dump_one_frame(frame);
         break;
     }
   }

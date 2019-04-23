@@ -54,18 +54,18 @@ void process_admin_command ()
         dump_registers (); break;
       case 'p':   // dump the list of available PCBs
         dump_PCB_list (); break;
-	  case 'b':
-		  dump_entries();//process.c dump page table information
-		 break;
+      case 'b':
+        dump_entries();//process.c dump page table information
+        break;
       case 'm':   // dump memory of each process
         dump_PCB_memory (); break;
       case 'f':   // dump memory frames and free frame list
         dump_memoryframe_info ();
-		break;
+        dump_free_list();
+		    break;
       case 'n':   // dump the content of the entire memory
         dump_memory ();
-		dump_free_list();
-		break;
+		    break;
       case 'e':   // dump events in clock.c
         dump_events (); break;
       case 't':   // dump terminal IO queue
