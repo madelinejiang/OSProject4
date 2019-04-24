@@ -1,3 +1,10 @@
+//===============================================================
+// process.c
+// Authors: Madeline Jiang (100%)
+// Work division: There wasn't too much to do, but did add MDbase
+//  back in as a register.
+//===============================================================
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>

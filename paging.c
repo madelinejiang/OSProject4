@@ -1,3 +1,11 @@
+//==========================================================
+// paging.c
+// Authors: Joel Yin (80%), Madeline Jiang (20%)
+// Work division: Madeline Jiang implemented select_agest_frame() and tweaked necessary functions
+//  Joel Yin completed all other functions, except for a few dump functions where both touched such as 
+//  get_free_frame() and addto_free_list()
+//==========================================================
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -202,7 +210,7 @@ void dump_one_frame (int findex) {
   printf("************ Dump contents of frame %d\n", findex);
   
   for(i = findex * pageSize; i < (findex + 1) * pageSize; i++){
-    printf("Memory @ - 0x%08x| Data - 0x%04x\n", i, Memory[i]);
+    printf("Memory @ - 0x%08x| Data - 0x%08x\n", i, Memory[i]);
   }
 }
 

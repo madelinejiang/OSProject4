@@ -1,6 +1,31 @@
+//==========================================================
+// admin.c
+// Authors: Madeline Jiang (100%)
+// Work division: Added the a menu to help remember what 
+//  things did.
+//==========================================================
+
 #include <stdio.h>
 #include "simos.h"
 
+void menu() {
+    printf("Menu*********************************\n");
+    printf("Enter s to submit a file\n");
+    printf("Enter x to execute a file\n");
+    printf("Enter y to execute multiple cycles\n");
+    printf("Enter q to view ready queue and endWait queue\n");
+    printf("Enter r to dump current running process registers\n");
+    printf("Enter p to dump PCB information for submitted processes\n");
+    printf("Enter b to dump page tables for submitted processes\n");
+    printf("Enter m to dump memory content for submitted process\n");
+    printf("Enter n to dump main memory contents\n");
+    printf("Enter f to dump frame metadata for submitted processes\n");
+    printf("Enter e to dump events\n");
+    printf("Enter d to dump disk contents\n");
+    printf("Enter w to dump swap queue\n");
+    printf("Enter T to terminate\n");
+
+}
 
 void process_admin_command ()
 { char action[10];
@@ -13,7 +38,9 @@ void process_admin_command ()
     if (Debug) printf ("Command is %c\n", action[0]);
     // only first action character counts, discard remainder
     switch (action[0])
-    { case 's':  // submit
+    { case 'h':  // get menu of possible functions
+        menu(); break;
+      case 's':  // submit
         one_submission (); break;
       case 'x':  // execute
         execute_process (); break;
@@ -38,7 +65,7 @@ void process_admin_command ()
       case 'f':   // dump memory frames and free frame list
         dump_memoryframe_info ();
 		    dump_free_list();
-		break;
+		    break;
       case 'n':   // dump the content of the entire memory
         dump_memory (); break;
       case 'e':   // dump events in clock.c
@@ -51,9 +78,8 @@ void process_admin_command ()
 		    dump_swap(); break;//dump swap.disk
       case 'T':  // Terminate, do nothing, terminate in while loop
         systemActive = 0; break;
-
       default:   // can be used to yield to client submission input
-        printf ("Error: Incorrect command!!!\n");
+        printf ("Error: Incorrect command!!! Enter 'h' for possible commands\n");
     }
   }
   printf ("Admin command processing loop ended!\n");

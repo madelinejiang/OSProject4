@@ -1,3 +1,12 @@
+//==============================================================
+// swap.c
+// Authors: Joel Yin (10%), Madeline Jiang (90%)
+// Work division: Madeline Jiang implemented the majority
+//  of the swapQ and processing, including the semaphores
+//  and locks. Joel Yin tweaked things in the insert and process
+//  swapQ functions in order to handle page faults
+//==============================================================
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

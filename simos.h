@@ -1,3 +1,10 @@
+//==========================================================
+// simos.h
+// Authors: Joel Yin (100%)
+// Work division: Refactored a number of functions
+//  to clean up the output when making the final executable
+//==========================================================
+
 //================= general definitions =========================
 
 //#define Debug 1

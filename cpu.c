@@ -1,3 +1,10 @@
+//==========================================================
+// cpu.c
+// Authors: Joel Yin (100%)
+// Work division: Filled in all the cpu microinstructions
+//  including the call for memory_agescan().
+//==========================================================
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "simos.h"
