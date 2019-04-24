@@ -101,8 +101,10 @@ int dump_process_swap_page (int pid, int page)
   }
   printf ("Content of process %d page %d:\n", pid, page);
   int k;
-  for (k=0; k<pageSize; k++) printf ("%d ", buf[k]);
-  printf ("\n");
+  int loc = (pid - 2) * PswapSize + page * pageSize;
+  for (k=0; k<pageSize; k++){
+     printf("Disk @ - 0x%08x | Data - 0x%08x\n", k+loc, buf[k]);
+  }
 
   //we should return something better than just 0
   return 0;
@@ -114,6 +116,7 @@ void dump_process_swap (int pid)
   printf ("****** Dump swap pages for process %d\n", pid);
   for (j=0; j<maxPpages; j++) dump_process_swap_page (pid, j);
 }
+
 void dump_swap() {
 	int pid;
 	if (currentPid == 2) {
@@ -237,7 +240,6 @@ void *process_swapQ ()
 		swapQhead = node->next;
 
 		//prepare for the disk action
-		//
 		switch (node->act) {
 			case actRead: { 
         //read from swap space
@@ -250,7 +252,11 @@ void *process_swapQ ()
 				//write to swap space
 				write_swap_page(node->pid, node->page,node->buf);
         //don't forget to tell pcb that the frame is now on disk space
-        PCB[node->pid]->PTptr[node->page] = diskPage;
+        // printf("1111111***********************************************************************************\n");
+        // printf("pid/pg : %d/%d is being written to swap disk\n", node->pid, node->page);
+        update_process_pagetable(node->pid, node->page, diskPage);
+        // printf("%d-%d is at %d\n", node->pid, node->page, PCB[node->pid]->PTptr[node->page]);
+        // printf("2222222***********************************************************************************\n");
         }
         break;
 			default:

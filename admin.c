@@ -48,7 +48,7 @@ void process_admin_command ()
       case 'w':   // dump swap queue
         dump_swapQ (); break;
 	    case 'd':
-		  dump_swap(); break;//dump swap.disk
+		    dump_swap(); break;//dump swap.disk
       case 'T':  // Terminate, do nothing, terminate in while loop
         systemActive = 0; break;
 

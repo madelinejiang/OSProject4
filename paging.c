@@ -75,11 +75,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
   // get PTindex from offset
   //in case offset is 0, pageIndex will be -1, but it should be 0
   int pageIndex;
-  if(offset == 0){
-    pageIndex = 0;
-  } else {
-    pageIndex = (offset) / pageSize ;
-  }
+  pageIndex = (offset) / pageSize ;
   
   if(pageIndex >= maxPpages){
     // Definintely a memory access violation, outside of pagetable addressing
@@ -88,7 +84,7 @@ int calculate_memory_address (unsigned offset, int rwflag)
 
   //after we get the pageIndex, check the PT and return appropriate result
   int frame = CPU.PTptr[pageIndex];
-  printf("page checked out to be frame: %d\n", frame);
+  //printf("page checked out to be frame: %d\n", frame);
   switch(frame){
     case nullPage:
       // return this since this is a access violation
@@ -107,7 +103,13 @@ int calculate_memory_address (unsigned offset, int rwflag)
       int memOffset = frame * pageSize;
       int pageOffset = offset - pageIndex * pageSize;
       int address = memOffset + pageOffset;
-      memFrame[frame].dirty = dirtyFrame;
+      memFrame[frame].age = memFrame[frame].age | highestAge;
+      memFrame[frame].pinned == nopinFrame;
+      if(rwflag == flagWrite){
+        memFrame[frame].dirty = dirtyFrame;
+      }
+      // If the frame was freed ad limbo, then we reinstate the frames info
+      update_frame_info(frame, CPU.Pid, pageIndex);
       return address;
     }
   }
@@ -211,17 +213,22 @@ void dump_memory ()
   for (i=0; i<numFrames; i++) dump_one_frame (i);
 }
 
-// above: dump memory content, below: only dump frame inforation
+// above: dump memory content, below: only dump frame informtion
 
 // dump the list of free memory frames
 void dump_free_list ()
 { int i = freeFhead;
 
   printf ("******************** Free Frame List\n");
-
+  printf("Free Frame: ");
+  int count = 0;
   while(i > nullIndex){ //currently gives an endless loop MJ
-    printf ("Free Frame %d->", i);
+    printf ("%d->", i);
     i = memFrame[i].next;
+    count++;
+    if(count > 10){
+      i = -1;
+    }
   }
   printf("||\n");
 }
@@ -231,18 +238,17 @@ void print_one_frameinfo (int indx)
           memFrame[indx].pid, memFrame[indx].page, memFrame[indx].age);
   printf ("dir/free/pin=%d/%d/%d, ",
           memFrame[indx].dirty, memFrame[indx].free, memFrame[indx].pinned);
-  printf ("next/prev=%d,%d\n",
-          memFrame[indx].next, memFrame[indx].prev);
+  printf ("prev/next=%d,%d\n",
+          memFrame[indx].prev, memFrame[indx].next);
 }
 
 void dump_memoryframe_info ()
 { int i;
 
   printf ("******************** Memory Frame Metadata\n");
-  printf ("Memory frame head/tail: %d/%d\n", freeFhead, freeFtail);
+  //printf ("Memory frame head/tail: %d/%d\n", freeFhead, freeFtail);
   for (i=OSpages; i<numFrames; i++)
   { printf ("Frame %d: ", i); print_one_frameinfo (i); }
-  dump_free_list ();
 }
 
 void  update_frame_info (findex, pid, page)
@@ -256,12 +262,14 @@ int findex, pid, page;
   memFrame[findex].page = page;
 
   // we have to update necesarry things if frame is now free
-  // by passing pid=nullPid and (page=nullIndex or page==nullPage), this will "reset" frame
+  // by passing pid=nullPid and (page=nullIndex or page==nullPage), this will "reset" frame meta-data
   if(pid == nullPid && (page == nullIndex || page == nullPage)){
     memFrame[findex].age = zeroAge;
     memFrame[findex].dirty = cleanFrame;
     memFrame[findex].free = freeFrame;
     memFrame[findex].pinned = nopinFrame;
+  } else {
+    memFrame[findex].free = usedFrame;
   }
 }
 
@@ -274,7 +282,7 @@ void addto_free_frame (int findex, int status)
   if(status == nullPage){
     // if nullPage, immediately add to free pages
     // there is no need to care about properly swapping out
-    // just overwrite the frame info, no loss of important info
+    // just overwrite the frame info, no loss of actual data in memory
     update_frame_info(findex, nullPid, nullIndex);
 
     // and don't forget to add to free list
@@ -289,7 +297,7 @@ void addto_free_frame (int findex, int status)
   } else {
     // If it gets to this point, I think we have a problem
     // We should only add to free frames when the status is nullPage
-    printf("ERROR: attempted to add a page to free list while status is not nullPage\n");
+    printf("ERROR: attempted to add a page to free list while status variable is not nullPage\n");
   }
 }
 
@@ -304,30 +312,104 @@ int select_agest_frame ()
 
   // Strategy: Perform 2 linear searches, 
   // First pass, get smallest age as well as count
-  int oldestCleanFrame;
+  int selectedFrameIndex = nullIndex;
   unsigned ageOfOldestFrame = highestAge;
   
   int frameIndex;
   FrameStruct frame;
-  int OldestFramesCount = 0;
   // Start at pid after OS frames
   for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++){
     frame = memFrame[frameIndex];
     //skip the frame if it's pinned
     if(frame.pinned == nopinFrame){
-      if(frame.age < ageOfOldestFrame && frame.dirty == cleanFrame){
+      if(frame.age < ageOfOldestFrame){
         ageOfOldestFrame = frame.age;
-        oldestCleanFrame = frameIndex;
       }
-
       //if we have a clean old as cray cray frame, then we should stop/break out of search loop
       if(ageOfOldestFrame == zeroAge){ break; }
     }
   }
 
-  for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++)
+  int found = 0;
+  // if(ageOfOldestFrame == zeroAge){
+    for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++){
+      frame = memFrame[frameIndex];
+      if(frame.pinned == nopinFrame && frame.age == ageOfOldestFrame){
+        if(selectedFrameIndex == nullIndex){
+          selectedFrameIndex = frameIndex;
+          if(frame.dirty == cleanFrame){
+            found = 1;
+            update_process_pagetable(frame.pid, frame.page, diskPage);
+          }
+        } else {
+          if(found){
+            if(frame.dirty == dirtyFrame){
+              int j = 0;
+              mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
+              for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
+                outbuf[j] = Memory[i];
+                j++;
+              }
+              update_process_pagetable(frame.pid, frame.page, pendingPage);
+              insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
+            } else {
+              update_process_pagetable(frame.pid, frame.page, diskPage);
+            }
+            addto_free_frame(frameIndex, nullPage);
+          } else {
+            if(frame.dirty == cleanFrame){
+              int j = 0;
+              mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
+              for (int i = selectedFrameIndex * pageSize; i < (selectedFrameIndex + 1) * pageSize; i++) {
+                outbuf[j] = Memory[i];
+                j++;
+              }
+              update_process_pagetable(frame.pid, frame.page, pendingPage);
+              insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
+              addto_free_frame(selectedFrameIndex, nullPage);
+              selectedFrameIndex = frameIndex;
+              found = 1;
+            } else {
+              int j = 0;
+              mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
+              for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
+                outbuf[j] = Memory[i];
+                j++;
+              }
+              update_process_pagetable(frame.pid, frame.page, pendingPage);
+              insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
+              addto_free_frame(frameIndex, nullPage);
+            }
+          }
+        }
+      }
+    }
+  // } 
+  // else {
+  //   // We will be unfair and get rid of the first instance when ageOfOldestFrame is not zeroAge
+  //   // Most likely, this will be triggered, and extremely rarely (if at all) will we have a frame age of 0
+  //   for(frameIndex = OSpages; found == 0 && frameIndex < numFrames; frameIndex++){
+  //     frame = memFrame[frameIndex];
+  //     if(frame.pinned == nopinFrame && frame.age == ageOfOldestFrame){
+  //       if(selectedFrameIndex == nullIndex){
+  //         selectedFrameIndex = frameIndex;
+  //         if(frame.dirty == cleanFrame){
+  //           // here we have found the best frame to kick out so break
+  //           break;
+  //         }
+  //       } else {
+  //         // at this point, the selectedFrame is dirty, so no need to check
+  //         if(frame.dirty == cleanFrame){
+  //           selectedFrameIndex = frameIndex;
+  //           break;
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+  
 
-  return oldestCleanFrame;
+  return selectedFrameIndex;
 }
 
 // get a free frame from the head of the free list 
@@ -351,12 +433,15 @@ int get_free_frame (){
       freeFtail = nullIndex;
     }
     memFrame[freeFrameIndex].next = nullIndex;
-    return freeFrameIndex;
+    // if the frame had been updated midway, we'll need to skip and call get_free_frame again
+    if(memFrame[freeFrameIndex].free = usedFrame){
+      return get_free_frame();
+    } else {
+      return freeFrameIndex;
+    }
   } else {
-    // we are assuming that a free frame will need to be used
-    // so dequeue the frame from list
-    
     // in the case there are no free frames, we'll need to get oldest frame, preferably not dirty
+    // that function is to be called explicitly outside of this function
     
     return nullIndex;
   }
@@ -373,6 +458,9 @@ int load_page_to_memory(int pid, int page, unsigned *buf){
   if (frame == nullIndex) { //no free frames
 		//get the lowest age frame
 		frame = select_agest_frame();
+    if(Debug){
+      printf("Retrieved frame %d via age replacement policy\n", frame);
+    }
 		//need to identify the pid of the frame being swapped out
 		int pidout = memFrame[frame].pid;
 		int pageout = memFrame[frame].page;
@@ -392,8 +480,15 @@ int load_page_to_memory(int pid, int page, unsigned *buf){
       update_process_pagetable(pidout, pageout, pendingPage);
 		}
 		//else since the frame isn't dirty, we don't need to write back to swapQ
-	}
+	} else {
+    if(Debug){
+      printf("Retrieved frame %d from free frame queue\n", frame);
+    }
+  }
 
+  if(Debug){
+    printf("Loading page %d of pid %d to memory\n", page, pid);
+  }
   // Needed to properly interpret the incoming buffer, apparently
   mType *inbuf = (mType *) buf;
   int j = 0;
@@ -403,6 +498,7 @@ int load_page_to_memory(int pid, int page, unsigned *buf){
   }
 
   update_frame_info(frame, pid, page);
+  memFrame[frame].age = highestAge;
   update_process_pagetable(pid, page, frame);
   free(inbuf);
   return 0;
@@ -527,9 +623,11 @@ void dump_process_memory (int pid)
         break;
       case diskPage:
         printf("Page %d is in DISK\n", i);
+        dump_process_swap_page(pid,i);
         break;
       case pendingPage:
-        printf("Page %d is in SWAPQ\n", i);
+        printf("Page %d is in SWAPQ. Most recent page in DISK is: \n", i);
+        dump_process_swap_page(pid,i);
         break;
       default:
         dump_one_frame(frame);
@@ -585,6 +683,17 @@ void memory_agescan ()
       if(memFrame[frameIndex].age == 0){
         // since frame is old, we'll need to swap it out to swap.disk
         // free page
+        FrameStruct frame = memFrame[frameIndex];
+        if(frame.dirty == dirtyFrame){
+          int j = 0;
+          mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
+          for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
+            outbuf[j] = Memory[i];
+            j++;
+          }
+          insert_swapQ(frame.pid, frame.page, (unsigned *)outbuf, actWrite, freeBuf);
+        }
+        addto_free_frame(frameIndex, nullPage);
       }
     }
   }
