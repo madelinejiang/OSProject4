@@ -93,7 +93,9 @@ int load_process_to_swap (int pid, char *fname, int *dataOffset)
   int pagesNeeded = (msize - 1) / pageSize + 1;
   //int pagesNeeded = ceil((float)msize / (float)pageSize);
   int loadedPages = 0;//keep track of successfully loaded pages. in the future could have error checking with malloc
-  printf("msize is %d. pageSize is %d. Need %d pages\n", msize, pageSize, pagesNeeded);
+  if(Debug){
+    printf("msize is %d. pageSize is %d. Need %d pages\n", msize, pageSize, pagesNeeded);
+  }
   int line = 0;
   for(i = 0; i < pagesNeeded; i++){
     mType *page = (mType *) malloc (pageSize*sizeof(mType));
@@ -171,7 +173,13 @@ int load_process (int pid, char *fname)
   if(Debug){
     printf("%d pages inserted in swapQ\n", ret);
   }
-  if (ret != progError) load_pages_to_memory (pid, ret);
+  if (ret != progError){
+    if(countFreeFrames() > loadPpages){
+      load_pages_to_memory (pid, ret);
+    } else {
+      insert_ready_process(pid);
+    }
+  } 
   return ret;
 }
 

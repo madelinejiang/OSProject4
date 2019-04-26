@@ -6,7 +6,7 @@
 //  and locks. Joel Yin tweaked things in the insert and process
 //  swapQ functions in order to handle page faults
 //==============================================================
-
+#define _BRD_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -212,7 +212,8 @@ int pid, page, act, finishact;
 unsigned *buf;
 { sem_wait(&swapq_mutex);
   SwapQnode *node = (SwapQnode *) malloc(sizeof(SwapQnode));
-printf("-------------inserting into swapQ pid/page/act/finishact : %d/%d/%d/%d\n", pid, page, act, finishact);  
+  if(Debug)
+    printf("-------------inserting into swapQ pid/page/act/finishact : %d/%d/%d/%d\n", pid, page, act, finishact);  
   if(buf == NULL){
     buf = malloc(sizeof(unsigned) * pagedataSize);
   }
@@ -249,6 +250,8 @@ void *process_swapQ ()
 		swapQhead = node->next;
     sem_post(&swapq_mutex);
 		//prepare for the disk action
+    if(Debug)
+      printf("-------------processing in swapQ pid/page/act/finishact : %d/%d/%d/%d\n", node->pid, node->page, node->act, node->finishact);  
 		switch (node->act) {
 			case actRead: { 
         //read from swap space

@@ -186,6 +186,8 @@ int new_PCB ()
   }
   PCB[pid] = (typePCB *) malloc ( sizeof(typePCB) );
   PCB[pid]->Pid = pid;
+  PCB[pid]->timeUsed = 0;
+  PCB[pid]->numPF = 0;
   init_process_pagetable(pid);
   return (pid);
 }
@@ -306,25 +308,37 @@ void initialize_process_manager ()
 
 int submit_process (char *fname)
 { int pid, ret, i;
-  // Will change once we are confident everything works before demand paging
-  if ( ((numFrames-OSpages)/(numUserProcess+1)) < 2 )
-    printf ("\aToo many processes => they may not execute due to page faults\n");
-  else
-  { pid = new_PCB ();
-    if (pid > idlePid)
-    { int dataOffset;
-      ret = load_process (pid, fname);   // return #pages loaded
-      if (ret > 0)
-      { PCB[pid]->PC = 0;
+  int msize, numinstr, numdata;
+
+  FILE *progFd = fopen(fname, "r");
+  if(progFd == NULL){
+    printf("Submission Error: Program name not found, incorrect program name: %s!\n", fname);
+    return progError;
+  } else {
+    ret = fscanf(progFd, "%d %d %d\n", &msize, &numinstr, &numdata);
+    fclose(progFd);
+    // did not get all three inputs
+    if(ret < 3) {
+      printf("Submission failure: Invalid file, missing %d program parameters!\n", 3-ret);
+      return progError;
+    } else {
+      pid = new_PCB ();
+      if (pid > idlePid){
+        int dataOffset;
+        ret = load_process (pid, fname);   // return #pages loaded
+        // if (ret > 0){
+        PCB[pid]->PC = 0;
         PCB[pid]->AC = 0;
         PCB[pid]->exeStatus = eReady;
         // loader.c will fill in MDbase since we need it before putting any pages into memory
         // swap manager will put the process to ready queue
         numUserProcess++;
         return (pid);
-      } else clean_process(pid);
-      //else free_PCB (pid);   // cannot clean_process(), no page table
-  } }
+      }
+    }
+  }
+  
+// }
   // abnormal situation, PCB has not been allocated or has been freed
   char *str = (char *) malloc (80);
   printf ("Program %s has loading problem!!!\n", fname);
