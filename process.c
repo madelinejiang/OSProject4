@@ -206,6 +206,8 @@ void dump_PCB (int pid)
   printf ("MDbase = %d\n", PCB[pid]->MDbase);
   printf ("PTptr = %x\n", PCB[pid]->PTptr);
   printf ("exeStatus = %d\n", PCB[pid]->exeStatus);
+  printf ("Time used: %d\n", PCB[pid]->timeUsed);
+  printf ("Number of Page Faults %d\n", PCB[pid]->numPF);
 }
 
 void dump_PCB_list ()

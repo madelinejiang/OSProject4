@@ -57,7 +57,6 @@ void handle_interrupt ()
             CPU.Pid, CPU.interruptV, CPU.exeStatus); 
   while (CPU.interruptV != 0)
   { if ((CPU.interruptV & pFaultException) == pFaultException){
-      printf("gotta handle that page fault\n");
       if((CPU.interruptV & pFaultInstruction) == pFaultInstruction){
         page_fault_handler(pFaultInstruction);
         clear_interrupt(pFaultInstruction);
@@ -68,7 +67,6 @@ void handle_interrupt ()
     }
 
     if ((CPU.interruptV & ageInterrupt) == ageInterrupt){
-      printf("age wait interrupt handled! ... NOT\n");
       memory_agescan();
       clear_interrupt(ageInterrupt);
     }
@@ -93,7 +91,6 @@ void fetch_instruction ()
   if (mret == mError) {CPU.exeStatus = eError; dump_PCB_memory();}
   else if (mret == mPFault) {
     CPU.exeStatus = ePFault;
-    printf("INTERUPTTTING WITHTHHTHTHTHTHTHTHT %d\n", pFaultInstruction);
     set_interrupt(pFaultInstruction);
   }
   else // fetch data, but exclude OPend and OPsleep, which has no data

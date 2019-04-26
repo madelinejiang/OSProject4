@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include "simos.h"
 
 // Memory definitions, including the memory itself and a page structure
@@ -254,7 +255,6 @@ void dump_memoryframe_info ()
 { int i;
 
   printf ("******************** Memory Frame Metadata\n");
-  //printf ("Memory frame head/tail: %d/%d\n", freeFhead, freeFtail);
   for (i=OSpages; i<numFrames; i++)
   { printf ("Frame %d: ", i); print_one_frameinfo (i); }
 }
@@ -337,12 +337,11 @@ int select_agest_frame ()
       if(ageOfOldestFrame == zeroAge){ break; }
     }
   }
-//printf("THE OLDEST AGE ISST DIR 0x%x\n", ageOfOldestFrame);
+
   int found = 0;
   // if(ageOfOldestFrame == zeroAge){
   for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++){
     frame = memFrame[frameIndex];
-    //printf("frame index +============== %d ===================\n", frameIndex);
     if(frame.pinned == nopinFrame && frame.age == ageOfOldestFrame){
       if(selectedFrameIndex == nullIndex){
         selectedFrameIndex = frameIndex;
@@ -396,31 +395,6 @@ int select_agest_frame ()
       }
     }
   }
-  // } 
-  // else {
-  //   // We will be unfair and get rid of the first instance when ageOfOldestFrame is not zeroAge
-  //   // Most likely, this will be triggered, and extremely rarely (if at all) will we have a frame age of 0
-  //   for(frameIndex = OSpages; found == 0 && frameIndex < numFrames; frameIndex++){
-  //     frame = memFrame[frameIndex];
-  //     if(frame.pinned == nopinFrame && frame.age == ageOfOldestFrame){
-  //       if(selectedFrameIndex == nullIndex){
-  //         selectedFrameIndex = frameIndex;
-  //         if(frame.dirty == cleanFrame){
-  //           // here we have found the best frame to kick out so break
-  //           break;
-  //         }
-  //       } else {
-  //         // at this point, the selectedFrame is dirty, so no need to check
-  //         if(frame.dirty == cleanFrame){
-  //           selectedFrameIndex = frameIndex;
-  //           break;
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-  
-  printf("++++++++++++++++++++++++++ SELECTED FRAME ISSSTT DIR %d\n", selectedFrameIndex);
   return selectedFrameIndex;
 }
 
@@ -490,7 +464,6 @@ int load_page_to_memory(int pid, int page, unsigned *buf, int finishact){
 			}
       update_process_pagetable(pidout, pageout, pendingPage);  //changed because I want to make sure that this will pfault if
             // the page needs to be accessed
-printf("HUHUHUHUHUHUHUHH\n");
 			insert_swapQ(pidout, pageout, (unsigned *) outbuf, actWrite, freeBuf);
 		}
 		//else since the frame isn't dirty, we don't need to write back to swapQ
@@ -514,7 +487,7 @@ printf("HUHUHUHUHUHUHUHH\n");
     Memory[i] = inbuf[j];  
     j++;
   }
-printf("updating frame and process page table for pid/page/frame : %d/%d/%d\n", pid, page, frame);
+
   update_frame_info(frame, pid, page);
   memFrame[frame].age = highestAge;
   update_process_pagetable(pid, page, frame);
@@ -530,6 +503,10 @@ void initialize_memory ()
 
   // create memory + create page frame array memFrame 
   Memory = (mType *) malloc (numFrames*pageSize*sizeof(mType));
+  for(i = 0; i < numFrames * pageSize; i++){
+    Memory[i].mInstr = 0;
+  }
+
   memFrame = (FrameStruct *) malloc (numFrames*sizeof(FrameStruct));
 
   // compute #bits for page offset, set pagenumShift and pageoffsetMask
@@ -590,7 +567,6 @@ void init_process_pagetable (int pid)
 void update_process_pagetable (pid, page, frame)
 int pid, page, frame;
 { 
-  printf("-------------updated %d %d from frame %d to %d-----------\n", pid, page, PCB[pid]->PTptr[page], frame);
   // update the page table entry for process pid to point to the frame
   // or point to disk or null
   PCB[pid]->PTptr[page] = frame;
