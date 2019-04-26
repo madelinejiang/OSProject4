@@ -306,9 +306,9 @@ void initialize_process_manager ()
 
 int submit_process (char *fname)
 { int pid, ret, i;
-  if ( count_free_frames() < loadPpages )
-    printf ("\aToo many processes => they may not execute due to page faults\n");
-  else {
+    if ( count_free_frames() < loadPpages )
+      printf ("\aToo many processes => they may not finish executing due to page faults\n");
+  // else {
     pid = new_PCB ();
     if (pid > idlePid)
     { int dataOffset;
@@ -323,7 +323,7 @@ int submit_process (char *fname)
         return (pid);
       } else clean_process(pid);
       //else free_PCB (pid);   // cannot clean_process(), no page table
-  } }
+  } //}
   // abnormal situation, PCB has not been allocated or has been freed
   char *str = (char *) malloc (80);
   printf ("Program %s has loading problem!!!\n", fname);
