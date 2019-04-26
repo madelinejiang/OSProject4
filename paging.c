@@ -333,14 +333,13 @@ int select_agest_frame ()
       if(frame.age < ageOfOldestFrame){
         ageOfOldestFrame = frame.age;
       }
+      //if we have a clean old as cray cray frame, then we should stop/break out of search loop
       if(ageOfOldestFrame == zeroAge){ break; }
     }
   }
-<<<<<<< HEAD
-=======
 
->>>>>>> 193d2cb95b0ad384d42bfa747e12db3e1036e67f
   int found = 0;
+  // if(ageOfOldestFrame == zeroAge){
   for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++){
     frame = memFrame[frameIndex];
     if(frame.pinned == nopinFrame && frame.age == ageOfOldestFrame){
@@ -359,6 +358,7 @@ int select_agest_frame ()
               outbuf[j] = Memory[i];
               j++;
             }
+            // update_process_pagetable(frame.pid, frame.page, diskPage);
             update_process_pagetable(frame.pid, frame.page, pendingPage);
             insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
           } else {
@@ -373,6 +373,7 @@ int select_agest_frame ()
               outbuf[j] = Memory[i];
               j++;
             }
+            // update_process_pagetable(frame.pid, frame.page, diskPage);
             frame = memFrame[selectedFrameIndex];
             update_process_pagetable(frame.pid, frame.page, pendingPage);
             insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
@@ -385,6 +386,7 @@ int select_agest_frame ()
               outbuf[j] = Memory[i];
               j++;
             }
+            // update_process_pagetable(frame.pid, frame.page, diskPage);
             update_process_pagetable(frame.pid, frame.page, pendingPage);
             insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
             addto_free_frame(frameIndex, nullPage);
@@ -393,15 +395,6 @@ int select_agest_frame ()
       }
     }
   }
-<<<<<<< HEAD
-  // } 
-  // else {
-  //   // We will be unfair and get rid of the first instance when ageOfOldestFrame is not zeroAge
-  // }
-  
-  printf("++++++++++++++++++++++++++ SELECTED FRAME ISSSTT DIR %d\n", selectedFrameIndex);
-=======
->>>>>>> 193d2cb95b0ad384d42bfa747e12db3e1036e67f
   return selectedFrameIndex;
 }
 
@@ -471,10 +464,6 @@ int load_page_to_memory(int pid, int page, unsigned *buf, int finishact){
 			}
       update_process_pagetable(pidout, pageout, pendingPage);  //changed because I want to make sure that this will pfault if
             // the page needs to be accessed
-<<<<<<< HEAD
-		printf("HUHUHUHUHUHUHUHH\n");
-=======
->>>>>>> 193d2cb95b0ad384d42bfa747e12db3e1036e67f
 			insert_swapQ(pidout, pageout, (unsigned *) outbuf, actWrite, freeBuf);
 		}
 		//else since the frame isn't dirty, we don't need to write back to swapQ

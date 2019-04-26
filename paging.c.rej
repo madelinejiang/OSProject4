@@ -1,0 +1,9 @@
+diff a/paging.c b/paging.c	(rejected hunks)
+@@ -475,6 +475,7 @@
+ +<<<<<<< HEAD
+ +		printf("HUHUHUHUHUHUHUHH\n");
+ +=======
+++>>>>>>> Got rid of German comments and zeroed out memory
+  			insert_swapQ(pidout, pageout, (unsigned *) outbuf, actWrite, freeBuf);
+  		}
+  		//else since the frame isn't dirty, we don't need to write back to swapQ

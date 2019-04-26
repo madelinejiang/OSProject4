@@ -16,7 +16,7 @@ typedef unsigned *genericPtr;
           // to avoid the necessity of exposing internal structures
 
 
-//======== system.c configuration parameters and variables =========
+//======== sytem.c configuration parameters and variables =========
 
 //cpu and process
 int systemActive;
@@ -81,11 +81,11 @@ int get_instruction (int offset);
 
 // basic memory functions
 void initialize_memory_manager ();  // called by system.c
-void dump_memoryframe_info();
+void dump_process_memory (int pid);
+void dump_process_pagetable (int pid);
+void dump_memoryframe_info ();
 void dump_free_list();
-void dump_memory();
-void remove_frame_from_free(int frame);
-
+void dump_memory ();
 
 // memory management functions
 
@@ -106,11 +106,7 @@ int load_page_to_memory(int pid, int page, unsigned *buf, int finishact);
 
 // by cpu.c
 void page_fault_handler ();
-void age_all_frames();
 
-#define noInstrPFlag 0
-#define instrPFlag 1
-int pFaultType;
 
 //================= cpu.c related definitions ======================
 
@@ -196,10 +192,6 @@ void dump_PCB (int pid);
 void dump_PCB_list ();
 void dump_PCB_memory ();
 void dump_ready_queue ();
-void dump_process_memory(int pid);
-void dump_process_pagetable(int pid);
-void dump_entries();
-
 
 void insert_endWait_process (int pid); 
      // called by clock.c (sleep), term.c (output), memory.c (page fault)
