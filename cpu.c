@@ -45,7 +45,7 @@ void set_interrupt (unsigned bit)
 void clear_interrupt (unsigned bit)
 { 
   unsigned negbit = -bit - 1;
-  printf ("IV is %x, ", CPU.interruptV);
+  printf ("IV is 0x%x, ", CPU.interruptV);
   CPU.interruptV = CPU.interruptV & negbit;
   printf ("after clear is %x\n", CPU.interruptV);
 }
@@ -53,22 +53,10 @@ void clear_interrupt (unsigned bit)
 void handle_interrupt ()
 {
   if (Debug) 
-    printf ("Interrupt handler: pid = %d; interrupt = %x; exeStatus = %d\n",
+    printf ("Interrupt handler: pid = %d; interrupt = 0x%02x; exeStatus = %d\n",
             CPU.Pid, CPU.interruptV, CPU.exeStatus); 
   while (CPU.interruptV != 0)
-  { if ((CPU.interruptV & endWaitInterrupt) == endWaitInterrupt)
-    { endWait_moveto_ready ();  
-      // interrupt may overwrite, move all IO done processes (maybe > 1)
-      clear_interrupt (endWaitInterrupt);
-    }
-
-    if ((CPU.interruptV & ageInterrupt) == ageInterrupt){
-      printf("age wait interrupt handled! ... NOT\n");
-      memory_agescan();
-      clear_interrupt(ageInterrupt);
-    }
-
-    if ((CPU.interruptV & pFaultException) == pFaultException){
+  { if ((CPU.interruptV & pFaultException) == pFaultException){
       printf("gotta handle that page fault\n");
       if((CPU.interruptV & pFaultInstruction) == pFaultInstruction){
         page_fault_handler(pFaultInstruction);
@@ -77,6 +65,18 @@ void handle_interrupt ()
         page_fault_handler(0);
       }
       clear_interrupt(pFaultException);
+    }
+
+    if ((CPU.interruptV & ageInterrupt) == ageInterrupt){
+      printf("age wait interrupt handled! ... NOT\n");
+      memory_agescan();
+      clear_interrupt(ageInterrupt);
+    }
+
+    if ((CPU.interruptV & endWaitInterrupt) == endWaitInterrupt)
+    { endWait_moveto_ready ();  
+      // interrupt may overwrite, move all IO done processes (maybe > 1)
+      clear_interrupt (endWaitInterrupt);
     }
 
     // Done last in case exeStatus is changed for another reason
@@ -90,9 +90,10 @@ void handle_interrupt ()
 void fetch_instruction ()
 { int mret;
   mret = get_instruction (CPU.PC);
-  if (mret == mError) CPU.exeStatus = eError;
+  if (mret == mError) {CPU.exeStatus = eError; dump_PCB_memory();}
   else if (mret == mPFault) {
     CPU.exeStatus = ePFault;
+    printf("INTERUPTTTING WITHTHHTHTHTHTHTHTHT %d\n", pFaultInstruction);
     set_interrupt(pFaultInstruction);
   }
   else // fetch data, but exclude OPend and OPsleep, which has no data

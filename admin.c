@@ -16,7 +16,7 @@ void menu() {
     printf("Enter q to view ready queue and endWait queue\n");
     printf("Enter r to dump current running process registers\n");
     printf("Enter p to dump PCB information for submitted processes\n");
-    printf("Enter b to dump page tables for submitted processes\n");
+    // printf("Enter b to dump page tables for submitted processes\n");
     printf("Enter m to dump memory content for submitted process\n");
     printf("Enter n to dump main memory contents\n");
     printf("Enter f to dump frame metadata for submitted processes\n");

@@ -321,7 +321,7 @@ int select_agest_frame ()
   // Strategy: Perform 2 linear searches, 
   // First pass, get smallest age as well as count
   int selectedFrameIndex = nullIndex;
-  unsigned ageOfOldestFrame = highestAge;
+  unsigned ageOfOldestFrame = 0xFF;
   
   int frameIndex;
   FrameStruct frame;
@@ -337,61 +337,65 @@ int select_agest_frame ()
       if(ageOfOldestFrame == zeroAge){ break; }
     }
   }
-
+//printf("THE OLDEST AGE ISST DIR 0x%x\n", ageOfOldestFrame);
   int found = 0;
   // if(ageOfOldestFrame == zeroAge){
-    for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++){
-      frame = memFrame[frameIndex];
-      if(frame.pinned == nopinFrame && frame.age == ageOfOldestFrame){
-        if(selectedFrameIndex == nullIndex){
-          selectedFrameIndex = frameIndex;
-          if(frame.dirty == cleanFrame){
-            found = 1;
+  for(frameIndex = OSpages; frameIndex < numFrames; frameIndex++){
+    frame = memFrame[frameIndex];
+    //printf("frame index +============== %d ===================\n", frameIndex);
+    if(frame.pinned == nopinFrame && frame.age == ageOfOldestFrame){
+      if(selectedFrameIndex == nullIndex){
+        selectedFrameIndex = frameIndex;
+        if(frame.dirty == cleanFrame){
+          found = 1;
+          update_process_pagetable(frame.pid, frame.page, diskPage);
+        }
+      } else {
+        if(found){
+          if(frame.dirty == dirtyFrame){
+            int j = 0;
+            mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
+            for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
+              outbuf[j] = Memory[i];
+              j++;
+            }
+            // update_process_pagetable(frame.pid, frame.page, diskPage);
+            update_process_pagetable(frame.pid, frame.page, pendingPage);
+            insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
+          } else {
             update_process_pagetable(frame.pid, frame.page, diskPage);
           }
+          addto_free_frame(frameIndex, nullPage);
         } else {
-          if(found){
-            if(frame.dirty == dirtyFrame){
-              int j = 0;
-              mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
-              for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
-                outbuf[j] = Memory[i];
-                j++;
-              }
-              update_process_pagetable(frame.pid, frame.page, pendingPage);
-              insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
-            } else {
-              update_process_pagetable(frame.pid, frame.page, diskPage);
+          if(frame.dirty == cleanFrame){
+            int j = 0;
+            mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
+            for (int i = selectedFrameIndex * pageSize; i < (selectedFrameIndex + 1) * pageSize; i++) {
+              outbuf[j] = Memory[i];
+              j++;
             }
-            addto_free_frame(frameIndex, nullPage);
+            // update_process_pagetable(frame.pid, frame.page, diskPage);
+            frame = memFrame[selectedFrameIndex];
+            update_process_pagetable(frame.pid, frame.page, pendingPage);
+            insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
+            addto_free_frame(selectedFrameIndex, nullPage);
+            found = 1;
           } else {
-            if(frame.dirty == cleanFrame){
-              int j = 0;
-              mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
-              for (int i = selectedFrameIndex * pageSize; i < (selectedFrameIndex + 1) * pageSize; i++) {
-                outbuf[j] = Memory[i];
-                j++;
-              }
-              update_process_pagetable(frame.pid, frame.page, pendingPage);
-              insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
-              addto_free_frame(selectedFrameIndex, nullPage);
-              selectedFrameIndex = frameIndex;
-              found = 1;
-            } else {
-              int j = 0;
-              mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
-              for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
-                outbuf[j] = Memory[i];
-                j++;
-              }
-              update_process_pagetable(frame.pid, frame.page, pendingPage);
-              insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
-              addto_free_frame(frameIndex, nullPage);
+            int j = 0;
+            mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
+            for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
+              outbuf[j] = Memory[i];
+              j++;
             }
+            // update_process_pagetable(frame.pid, frame.page, diskPage);
+            update_process_pagetable(frame.pid, frame.page, pendingPage);
+            insert_swapQ(frame.pid, frame.page, (unsigned *) outbuf, actWrite, freeBuf);
+            addto_free_frame(frameIndex, nullPage);
           }
         }
       }
     }
+  }
   // } 
   // else {
   //   // We will be unfair and get rid of the first instance when ageOfOldestFrame is not zeroAge
@@ -416,7 +420,7 @@ int select_agest_frame ()
   //   }
   // }
   
-
+  printf("++++++++++++++++++++++++++ SELECTED FRAME ISSSTT DIR %d\n", selectedFrameIndex);
   return selectedFrameIndex;
 }
 
@@ -461,7 +465,7 @@ int get_free_frame (){
 #define pInstr 2
 #define pMix 4
 
-int load_page_to_memory(int pid, int page, unsigned *buf){
+int load_page_to_memory(int pid, int page, unsigned *buf, int finishact){
   int frame = get_free_frame();
   if (frame == nullIndex) { //no free frames
 		//get the lowest age frame
@@ -484,14 +488,20 @@ int load_page_to_memory(int pid, int page, unsigned *buf){
 				outbuf[j] = Memory[i];
 				j++;
 			}
+      update_process_pagetable(pidout, pageout, pendingPage);  //changed because I want to make sure that this will pfault if
+            // the page needs to be accessed
+printf("HUHUHUHUHUHUHUHH\n");
 			insert_swapQ(pidout, pageout, (unsigned *) outbuf, actWrite, freeBuf);
-      update_process_pagetable(pidout, pageout, pendingPage);
 		}
 		//else since the frame isn't dirty, we don't need to write back to swapQ
 	} else {
     if(Debug){
       printf("Retrieved frame %d from free frame queue\n", frame);
     }
+    // FrameStruct f = memFrame[frame];
+    // if(f.page != nullIndex){
+    //   update_process_pagetable(f.page, f.page, diskPage);
+    // }
   }
 
   if(Debug){
@@ -504,11 +514,14 @@ int load_page_to_memory(int pid, int page, unsigned *buf){
     Memory[i] = inbuf[j];  
     j++;
   }
-
+printf("updating frame and process page table for pid/page/frame : %d/%d/%d\n", pid, page, frame);
   update_frame_info(frame, pid, page);
   memFrame[frame].age = highestAge;
   update_process_pagetable(pid, page, frame);
   free(inbuf);
+  if(finishact == toReady){
+    // insert_ready_process(pid);
+  }
   return 0;
 }
 
@@ -577,9 +590,9 @@ void init_process_pagetable (int pid)
 void update_process_pagetable (pid, page, frame)
 int pid, page, frame;
 { 
+  printf("-------------updated %d %d from frame %d to %d-----------\n", pid, page, PCB[pid]->PTptr[page], frame);
   // update the page table entry for process pid to point to the frame
   // or point to disk or null
-
   PCB[pid]->PTptr[page] = frame;
 }
 
@@ -676,6 +689,9 @@ void page_fault_handler (unsigned pFaultTypeBit)
 	int pidin = CPU.Pid;
   update_process_pagetable(CPU.Pid, pagein, pendingPage);
 	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
+  dump_PCB_memory ();
+  dump_memoryframe_info ();
+  dump_free_list();
 }
 
 // scan the memory and update the age field of each frame
@@ -699,7 +715,11 @@ void memory_agescan ()
             outbuf[j] = Memory[i];
             j++;
           }
+          // update_process_pagetable(frame.pid, frame.page, diskPage);
+          update_process_pagetable(frame.pid, frame.page, pendingPage);
           insert_swapQ(frame.pid, frame.page, (unsigned *)outbuf, actWrite, freeBuf);
+        } else {
+          update_process_pagetable(frame.pid, frame.page, diskPage);
         }
         addto_free_frame(frameIndex, nullPage);
       }
@@ -716,6 +736,6 @@ void initialize_memory_manager ()
 { 
   // initialize memory and add page scan event request
   initialize_memory();
-  //start_periodical_page_scan();
+  start_periodical_page_scan();
 }
 
