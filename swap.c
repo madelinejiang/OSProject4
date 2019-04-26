@@ -248,7 +248,6 @@ void *process_swapQ ()
 		SwapQnode *node = swapQhead;
 		swapQhead = node->next;
     sem_post(&swapq_mutex);
-printf("-------------processing pid/page/act/finishact : %d/%d/%d/%d\n", node->pid, node->page, node->act, node->finishact);
 		//prepare for the disk action
 		switch (node->act) {
 			case actRead: { 
@@ -265,11 +264,7 @@ printf("-------------processing pid/page/act/finishact : %d/%d/%d/%d\n", node->p
 				//write to swap space
 				write_swap_page(node->pid, node->page, node->buf);
         //don't forget to tell pcb that the frame is now on disk space
-        // printf("1111111***********************************************************************************\n");
-        // printf("pid/pg : %d/%d is being written to swap disk\n", node->pid, node->page);
         update_process_pagetable(node->pid, node->page, diskPage);
-        // printf("%d-%d is at %d\n", node->pid, node->page, PCB[node->pid]->PTptr[node->page]);
-        // printf("2222222***********************************************************************************\n");
         }
         break;
 			default:
@@ -305,7 +300,6 @@ printf("-------------processing pid/page/act/finishact : %d/%d/%d/%d\n", node->p
 				break;
 
 		}
-printf("-------------completed pid/page/act/finishact : %d/%d/%d/%d\n", node->pid, node->page, node->act, node->finishact);
 		free(node);
 		node = NULL;
 	}
