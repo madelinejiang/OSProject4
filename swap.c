@@ -1,3 +1,12 @@
+//==============================================================
+// swap.c
+// Authors: Joel Yin (10%), Madeline Jiang (90%)
+// Work division: Madeline Jiang implemented the majority
+//  of the swapQ and processing, including the semaphores
+//  and locks. Joel Yin tweaked things in the insert and process
+//  swapQ functions in order to handle page faults
+//==============================================================
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -93,7 +102,7 @@ int dump_process_swap_page (int pid, int page)
   int ret = lseek (diskfd, location, SEEK_SET);
   //printf ("loc %d %d %d, size %d\n", pid, page, location, pagedataSize);
   if (ret < 0) perror ("Error lseek in dump: \n");
-  unsigned *buf = (unsigned *) malloc(pagedataSize*sizeof(unsigned*));
+  unsigned *buf = (unsigned *) malloc(pagedataSize);
   int retsize = read (diskfd, buf, pagedataSize);
   if (retsize != pagedataSize) 
   { printf ("Error: Disk dump read incorrect size: %d\n", retsize); 
@@ -101,9 +110,9 @@ int dump_process_swap_page (int pid, int page)
   }
   printf ("Content of process %d page %d:\n", pid, page);
   int k;
-  int loc= (pid - 2) * PswapSize + page * pageSize;
-  for (k = 0; k < pageSize; k++) { 
-	  printf("DISK @ - 0x%08x| Data - 0x%08x\n", k+loc, buf[k]);
+  int loc = (pid - 2) * maxPpages * pageSize + page * pageSize;
+  for (k=0; k<pageSize; k++){
+     printf("Disk @ - 0x%08x | Data - 0x%08x\n", k+loc, buf[k]);
   }
 
   //we should return something better than just 0
@@ -116,6 +125,7 @@ void dump_process_swap (int pid)
   printf ("****** Dump swap pages for process %d\n", pid);
   for (j=0; j<maxPpages; j++) dump_process_swap_page (pid, j);
 }
+
 void dump_swap() {
 	int pid;
 	if (currentPid == 2) {
@@ -202,7 +212,7 @@ int pid, page, act, finishact;
 unsigned *buf;
 { sem_wait(&swapq_mutex);
   SwapQnode *node = (SwapQnode *) malloc(sizeof(SwapQnode));
-  
+printf("-------------inserting into swapQ pid/page/act/finishact : %d/%d/%d/%d\n", pid, page, act, finishact);  
   if(buf == NULL){
     buf = malloc(sizeof(unsigned) * pagedataSize);
   }
@@ -237,22 +247,29 @@ void *process_swapQ ()
 		//dequeue
 		SwapQnode *node = swapQhead;
 		swapQhead = node->next;
-
+    sem_post(&swapq_mutex);
+printf("-------------processing pid/page/act/finishact : %d/%d/%d/%d\n", node->pid, node->page, node->act, node->finishact);
 		//prepare for the disk action
-		//
 		switch (node->act) {
 			case actRead: { 
         //read from swap space
-          read_swap_page(node->pid, node->page, node->buf);
-          load_page_to_memory(node->pid,node->page, node->buf);
-          //pcb pttbl will be set in paging instead.
+        if(node->finishact == toReady){
+          add_timer(diskRWtime+1, node->pid, actReadyInterrupt, 0);
+        }
+        read_swap_page(node->pid, node->page, node->buf);
+        load_page_to_memory(node->pid,node->page, node->buf, node->finishact);
+        //pcb pttbl will be set in paging instead.
         }
         break;
 			case actWrite: {
 				//write to swap space
-				write_swap_page(node->pid, node->page,node->buf);
+				write_swap_page(node->pid, node->page, node->buf);
         //don't forget to tell pcb that the frame is now on disk space
-				PCB[node->pid]->PTptr[node->page] = diskPage;
+        // printf("1111111***********************************************************************************\n");
+        // printf("pid/pg : %d/%d is being written to swap disk\n", node->pid, node->page);
+        update_process_pagetable(node->pid, node->page, diskPage);
+        // printf("%d-%d is at %d\n", node->pid, node->page, PCB[node->pid]->PTptr[node->page]);
+        // printf("2222222***********************************************************************************\n");
         }
         break;
 			default:
@@ -274,23 +291,23 @@ void *process_swapQ ()
 				}
 				break;
 			case toReady:
-        if(node->act == actRead){
-          insert_ready_process(node->pid);
-        } else {
+        if(node->act == actWrite){
           printf("ERROR: Cannot place a process to ReadyQ on actWrite\n");
+        } else {
+          // insert_ready_process(node->pid);
         }
 				break;
 			case Both:
 				free(node->buf);
-				insert_ready_process(node->pid);
+				// insert_ready_process(node->pid);
 				break;
 			default:
 				break;
 
 		}
+printf("-------------completed pid/page/act/finishact : %d/%d/%d/%d\n", node->pid, node->page, node->act, node->finishact);
 		free(node);
 		node = NULL;
-		sem_post(&swapq_mutex);
 	}
 }
 

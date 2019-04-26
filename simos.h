@@ -1,3 +1,10 @@
+//==========================================================
+// simos.h
+// Authors: Joel Yin (100%)
+// Work division: Refactored a number of functions
+//  to clean up the output when making the final executable
+//==========================================================
+
 //================= general definitions =========================
 
 //#define Debug 1
@@ -95,7 +102,7 @@ void update_frame_info (int findex, int pid, int page);
 void direct_put_instruction (int findex, int offset, int instr);
 void direct_put_data (int findex, int offset, mdType data);
 int get_free_frame ();
-int load_page_to_memory(int pid, int page, unsigned *buf);
+int load_page_to_memory(int pid, int page, unsigned *buf, int finishact);
 
 // by cpu.c
 void page_fault_handler ();
