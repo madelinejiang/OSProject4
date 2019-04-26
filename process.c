@@ -306,11 +306,10 @@ void initialize_process_manager ()
 
 int submit_process (char *fname)
 { int pid, ret, i;
-  // Will change once we are confident everything works before demand paging
-  if ( ((numFrames-OSpages)/(numUserProcess+1)) < 2 )
+  if ( count_free_frames() < loadPpages )
     printf ("\aToo many processes => they may not execute due to page faults\n");
-  else
-  { pid = new_PCB ();
+  else {
+    pid = new_PCB ();
     if (pid > idlePid)
     { int dataOffset;
       ret = load_process (pid, fname);   // return #pages loaded

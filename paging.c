@@ -93,7 +93,6 @@ int calculate_memory_address (unsigned offset, int rwflag)
 
   //after we get the pageIndex, check the PT and return appropriate result
   int frame = CPU.PTptr[pageIndex];
-  //printf("page checked out to be frame: %d\n", frame);
   switch(frame){
     case nullPage:
       // return this since this is a access violation
@@ -353,8 +352,9 @@ int select_agest_frame ()
         if(found){
           if(frame.dirty == dirtyFrame){
             int j = 0;
+            int i;
             mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
-            for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
+            for (i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
               outbuf[j] = Memory[i];
               j++;
             }
@@ -368,8 +368,9 @@ int select_agest_frame ()
         } else {
           if(frame.dirty == cleanFrame){
             int j = 0;
+            int i;
             mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
-            for (int i = selectedFrameIndex * pageSize; i < (selectedFrameIndex + 1) * pageSize; i++) {
+            for (i = selectedFrameIndex * pageSize; i < (selectedFrameIndex + 1) * pageSize; i++) {
               outbuf[j] = Memory[i];
               j++;
             }
@@ -381,8 +382,9 @@ int select_agest_frame ()
             found = 1;
           } else {
             int j = 0;
+            int i;
             mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
-            for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
+            for (i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
               outbuf[j] = Memory[i];
               j++;
             }
@@ -396,6 +398,17 @@ int select_agest_frame ()
     }
   }
   return selectedFrameIndex;
+}
+
+int count_free_frames(){
+  int count = 0;
+  int i;
+  for(i = OSpages; i < numFrames; i++){
+    if(memFrame[i].free == freeFrame){
+      count++;
+    }
+  }
+  return count;
 }
 
 // get a free frame from the head of the free list 
@@ -457,8 +470,9 @@ int load_page_to_memory(int pid, int page, unsigned *buf, int finishact){
 			//mType outbuf = (mType *)malloc(pageSize * sizeof(mType));
 			//mType outbuf = Memory[frame * pageSize];
 			int j = 0;
+      int i;
 			mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
-			for (int i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
+			for (i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
 				outbuf[j] = Memory[i];
 				j++;
 			}
@@ -483,7 +497,8 @@ int load_page_to_memory(int pid, int page, unsigned *buf, int finishact){
   // Needed to properly interpret the incoming buffer, apparently
   mType *inbuf = (mType *) buf;
   int j = 0;
-  for (int i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
+  int i;
+  for (i = frame * pageSize; i < (frame + 1) * pageSize; i++) {
     Memory[i] = inbuf[j];  
     j++;
   }
@@ -665,9 +680,6 @@ void page_fault_handler (unsigned pFaultTypeBit)
 	int pidin = CPU.Pid;
   update_process_pagetable(CPU.Pid, pagein, pendingPage);
 	insert_swapQ(pidin, pagein, NULL, actRead, toReady);
-  dump_PCB_memory ();
-  dump_memoryframe_info ();
-  dump_free_list();
 }
 
 // scan the memory and update the age field of each frame
@@ -686,8 +698,9 @@ void memory_agescan ()
         FrameStruct frame = memFrame[frameIndex];
         if(frame.dirty == dirtyFrame){
           int j = 0;
+          int i;
           mType *outbuf = (mType*) malloc(pageSize * sizeof(mType));
-          for (int i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
+          for (i = frameIndex * pageSize; i < (frameIndex + 1) * pageSize; i++) {
             outbuf[j] = Memory[i];
             j++;
           }

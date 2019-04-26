@@ -3,7 +3,7 @@
 // Authors: Madeline Jiang (100%)
 // Work division: Added the semaphores and locks back in
 //==========================================================
-
+#define _BRD_SOURCE
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdio.h>
