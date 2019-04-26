@@ -247,6 +247,7 @@ void *process_swapQ ()
 		//dequeue
 		SwapQnode *node = swapQhead;
 		swapQhead = node->next;
+    sem_post(&swapq_mutex);
 printf("-------------processing pid/page/act/finishact : %d/%d/%d/%d\n", node->pid, node->page, node->act, node->finishact);
 		//prepare for the disk action
 		switch (node->act) {
@@ -307,7 +308,6 @@ printf("-------------processing pid/page/act/finishact : %d/%d/%d/%d\n", node->p
 printf("-------------completed pid/page/act/finishact : %d/%d/%d/%d\n", node->pid, node->page, node->act, node->finishact);
 		free(node);
 		node = NULL;
-		sem_post(&swapq_mutex);
 	}
 }
 
