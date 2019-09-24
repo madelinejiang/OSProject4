@@ -236,7 +236,7 @@ unsigned *buf;
   sem_post(&swapq_mutex);
 }
 
-void *process_swapQ ()
+void *process_swapQ (void* dummy)
 {
   // called as the entry function for the swap thread
   //wait for something in the queue before proceeding
@@ -247,8 +247,13 @@ void *process_swapQ ()
 		//<critical section>
 		//dequeue
 		SwapQnode *node = swapQhead;
+		if(node!=NULL){
 		swapQhead = node->next;
+		}
     sem_post(&swapq_mutex);
+	if(node==NULL){
+	break;
+	}
     if(Debug)
       printf("-------------Process in swapQ pid/page/act/finishact : %d/%d/%d/%d\n", node->pid, node->page, node->act, node->finishact);  
 		//prepare for the disk action
